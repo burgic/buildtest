@@ -1,6 +1,7 @@
 // src/context/WorkflowContext.tsx
 import React, { createContext, useContext, useState } from 'react';
-import type { Workflow, WorkflowSection } from '../types/workflow.types';
+import type { Workflow } from '../types/workflow.types';
+import { WorkflowService } from '../services/WorkflowService';
 
 interface WorkflowContextType {
   currentWorkflow: Workflow | null;
@@ -10,16 +11,21 @@ interface WorkflowContextType {
 
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
 
-export function WorkflowProvider({ children }: { children: React.ReactNode }) {
+interface WorkflowProviderProps {
+  children: React.ReactNode;
+}
+
+export function WorkflowProvider({ children }: WorkflowProviderProps) {
   const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | null>(null);
 
   const saveProgress = async (sectionId: string, data: any) => {
     try {
-      if (!currentWorkflow) return;
+      if (!currentWorkflow) {
+        throw new Error('No active workflow');
+      }
       
       await WorkflowService.saveFormResponse(currentWorkflow.id, sectionId, data);
       
-      // Update local state if needed
       setCurrentWorkflow(prev => {
         if (!prev) return null;
         return {
@@ -50,10 +56,10 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useWorkflow = () => {
+export function useWorkflow() {
   const context = useContext(WorkflowContext);
   if (context === undefined) {
     throw new Error('useWorkflow must be used within a WorkflowProvider');
   }
   return context;
-};
+}

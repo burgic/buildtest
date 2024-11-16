@@ -1,5 +1,5 @@
 // src/components/auth/LoginForm.tsx
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { auth } from '../../lib/supabase';
 
 export function LoginForm() {

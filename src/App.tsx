@@ -1,28 +1,43 @@
-// src/App.tsx
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import Navigation from './components/Navigation';
+import { WorkflowProvider } from './context/WorkflowContext';
+import { AppLayout } from './components/AppLayout';
+import { ProtectedRoute } from './components/common/ProtectedRoute';
 import AdvisorDashboard from './pages/AdvisorDashboard';
 import ClientPortal from './pages/ClientPortal';
-import Reports from './pages/Reports';
+import Login from './pages/auth/login';
+import './index.css';
 
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <div className="min-h-screen bg-gray-50">
-          <Navigation />
-          <div className="container mx-auto px-4 py-8">
+      <WorkflowProvider>
+        <BrowserRouter>
+          <AppLayout>
             <Routes>
-              <Route path="/advisor" element={<AdvisorDashboard />} />
-              <Route path="/client" element={<ClientPortal />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/" element={<Navigate to="/advisor" replace />} />
+              <Route path="/auth/login" element={<Login />} />
+              <Route
+                path="/advisor/*"
+                element={
+                  <ProtectedRoute requiredRole="advisor">
+                    <AdvisorDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/client/*"
+                element={
+                  <ProtectedRoute requiredRole="client">
+                    <ClientPortal />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<Navigate to="/auth/login" replace />} />
             </Routes>
-          </div>
-        </div>
-      </BrowserRouter>
+          </AppLayout>
+        </BrowserRouter>
+      </WorkflowProvider>
     </AuthProvider>
   );
 }
