@@ -10,6 +10,8 @@ import Login from './pages/auth/login';
 import Register from './pages/auth/register';
 import './index.css';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import AuthCallback from './pages/auth/callback';
+import Dashboard from './pages/Dashboard';
 
 function App() {
   return (
@@ -22,6 +24,7 @@ function App() {
                 <Routes>
                   <Route path="/auth/login" element={<Login />} />
                   <Route path="auth/register" element = {<Register/>} />
+                  <Route path="auth/callback" element = {<AuthCallback/> } />
                   <Route
                     path="/advisor/*"
                     element={
@@ -39,7 +42,17 @@ function App() {
                     }
                   />
                   <Route path="*" element={<Navigate to="/auth/login" replace />} />
-                </Routes>
+                
+                
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <Navigate to="/dashboard" replace />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
               </AppLayout>
           
           </WorkflowProvider>

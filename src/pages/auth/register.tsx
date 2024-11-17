@@ -14,6 +14,8 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submitted with:', {email, password});
+
     setError(null);
 
     // Validate passwords match
@@ -29,11 +31,14 @@ export default function Register() {
     }
 
     setLoading(true);
+    console.log('Starting signup process...')
 
     try {
+      console.log('Calling signup')
       await signUp(email, password);
       // If we get here, assume email confirmation is required
       setConfirmationSent(true);
+      console.log('Signup successful')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create account');
     } finally {

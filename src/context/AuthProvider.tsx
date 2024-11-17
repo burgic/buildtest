@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, AuthError } from '@supabase/supabase-js';
-import { supabase, checkSupabaseConnection } from '../lib/supabase';
+import { User, AuthError, Session } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 interface AuthState {
   user: User | null;
@@ -20,6 +21,7 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
   const [state, setState] = useState<AuthState>({
     user: null,
     loading: true,
@@ -27,23 +29,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     message: null,
   });
 
-  const clearMessage = () => {
-    setState(prev => ({ ...prev, message: null}));
-  };
-
   // Define auth functions
   const signIn = async (email: string, password: string) => {
     try {
-      setState(prev => ({ ...prev, error: null }));
-      const { error } = await supabase.auth.signInWithPassword({
+      setState(prev => ({ ...prev, loading: true, error: null }));
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
       if (error) throw error;
+
+      setState(prev => ({
+        ...prev,
+        session: data.session,
+        user: data.session?.user ?? null,
+        loading: false,
+      }));
     } catch (error) {
       setState(prev => ({
         ...prev,
         error: error as AuthError,
+        loading: false,
       }));
       throw error;
     }
@@ -51,14 +58,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     try {
-      setState(prev => ({ ...prev, error: null, loading: true }));
-      const { error } = await supabase.auth.signUp({
+      setState(prev => ({ ...prev, loading: true, error: null }));
+      
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+          data: {
+            role: 'client' // Default role
+          }
+        }
       });
+
       if (error) throw error;
 
       setState(prev => ({
@@ -73,20 +85,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: error as AuthError,
         loading: false,
       }));
-      
       throw error;
     }
   };
 
   const signOut = async () => {
     try {
-      setState(prev => ({ ...prev, error: null }));
+      setState(prev => ({ ...prev, loading: true, error: null }));
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      setState(prev => ({
+        ...prev,
+        user: null,
+        session: null,
+        loading: false,
+      }));
+      
+      navigate('/auth/login');
     } catch (error) {
       setState(prev => ({
         ...prev,
         error: error as AuthError,
+        loading: false,
       }));
       throw error;
     }
@@ -94,90 +115,107 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = async (email: string) => {
     try {
-      setState(prev => ({ ...prev, error: null }));
+      setState(prev => ({ ...prev, loading: true, error: null }));
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/auth/reset-password`,
       });
+      
       if (error) throw error;
+
+      setState(prev => ({
+        ...prev,
+        message: 'Password reset instructions sent to your email',
+        loading: false,
+      }));
     } catch (error) {
       setState(prev => ({
         ...prev,
         error: error as AuthError,
+        loading: false,
       }));
       throw error;
     }
   };
 
+  const clearMessage = () => {
+    setState(prev => ({ ...prev, message: null }));
+  };
+
   useEffect(() => {
+    let mounted = true;
+
     async function initializeAuth() {
       try {
-        // Check Supabase connection
-        const isConnected = await checkSupabaseConnection();
-        if (!isConnected) {
-          throw new Error('Unable to connect to Supabase');
-        }
-
-        // Check active session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-
-        setState(prev => ({
-          ...prev,
-          user: session?.user ?? null,
-          loading: false,
-        }));
-
-        // Listen for auth changes
-        const {
-          data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
+        // Get initial session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) throw error;
+        
+        if (mounted) {
+          console.log('Initial session:', session);
           setState(prev => ({
             ...prev,
+            session,
             user: session?.user ?? null,
             loading: false,
           }));
-        });
+        }
 
-        return () => subscription.unsubscribe();
+        // Set up auth listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            console.log('Auth state changed:', event, session);
+            
+            if (mounted) {
+              setState(prev => ({
+                ...prev,
+                session,
+                user: session?.user ?? null,
+                loading: false,
+              }));
+
+              // Handle navigation based on auth state
+              switch (event) {
+                case 'SIGNED_IN':
+                  navigate('/dashboard');
+                  break;
+                case 'SIGNED_OUT':
+                  navigate('/auth/login');
+                  break;
+                case 'USER_UPDATED':
+                  // Refresh the session
+                  const { data: { session: refreshedSession } } = await supabase.auth.getSession();
+                  if (mounted && refreshedSession) {
+                    setState(prev => ({
+                      ...prev,
+                      session: refreshedSession,
+                      user: refreshedSession.user,
+                    }));
+                  }
+                  break;
+              }
+            }
+          }
+        );
+
+        return () => {
+          mounted = false;
+          subscription.unsubscribe();
+        };
       } catch (error) {
         console.error('Auth initialization error:', error);
-        setState(prev => ({
-          ...prev,
-          error: error as AuthError,
-          loading: false,
-        }));
+        if (mounted) {
+          setState(prev => ({
+            ...prev,
+            error: error as AuthError,
+            loading: false,
+          }));
+        }
       }
     }
 
     initializeAuth();
-  }, []);
-
-  // Show loading state
-  if (state.loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
-      </div>
-    );
-  }
-
-  // Show error state if there's a connection error
-  if (state.error && !state.loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="bg-red-50 text-red-700 p-4 rounded-lg max-w-md">
-          <h3 className="font-bold">Connection Error</h3>
-          <p>{state.error.message}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 bg-red-100 text-red-700 px-4 py-2 rounded hover:bg-red-200"
-          >
-            Retry Connection
-          </button>
-        </div>
-      </div>
-    );
-  }
+  }, [navigate]);
 
   const value = {
     ...state,
@@ -185,8 +223,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     signUp,
     resetPassword,
-    clearMessage,
+    clearMessage: () => setState(prev => ({ ... prev, message: null})),
   };
+
+  if (state.loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={value}>
