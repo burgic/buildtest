@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { storage } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 interface UploadedDocument {
   name: string;
@@ -26,9 +26,21 @@ export function DocumentUpload({
     setError(null);
 
     try {
-      const path = `workflows/${workflowId}/${Date.now()}-${file.name}`;
-      await storage.uploadDocument(file, path);
-      const publicUrl = storage.getDocumentUrl(path);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `workflows/${workflowId}/${fileName}`;
+
+      // Upload file to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('documents')
+        .getPublicUrl(filePath);
       
       const newDoc: UploadedDocument = {
         name: file.name,
