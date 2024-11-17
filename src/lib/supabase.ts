@@ -1,21 +1,8 @@
-// src/lib/supabase.ts
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
-// For development, these should be in your .env file
-// For production, they should be set in your hosting environment
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'http://localhost:54321';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
-
-// Log helpful development messages
-if (import.meta.env.DEV) {
-  if (!import.meta.env.VITE_SUPABASE_URL) {
-    console.warn('⚠️ VITE_SUPABASE_URL is not set in your environment variables');
-  }
-  if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
-    console.warn('⚠️ VITE_SUPABASE_ANON_KEY is not set in your environment variables');
-  }
-}
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
@@ -33,6 +20,26 @@ export const supabase = createClient<Database>(
   }
 );
 
-// Convenience exports
-export const auth = supabase.auth;
-export const storage = supabase.storage;
+
+export async function checkSupabaseConnection() {
+  try {
+    // First try to get the session
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+    
+    // Then check if we can access the database
+    const { error: dbError } = await supabase.from('user_profiles').select('count');
+    if (dbError && dbError.code !== '42P01') { // Ignore table not found error
+      throw dbError;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Supabase connection error:', error);
+    // Only return false if it's a connection error, not a table not found error
+    if (error.code === '42P01') {
+      return true; // Table doesn't exist but connection is fine
+    }
+    return false;
+  }
+}

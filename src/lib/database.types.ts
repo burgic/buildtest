@@ -79,7 +79,7 @@ export interface Database {
             updated_at?: string;
           };
         };
-        users: {
+        user_profiles: {
           Row: {
             id: string;
             email: string;

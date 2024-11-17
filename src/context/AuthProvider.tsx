@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, AuthError } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { supabase, checkSupabaseConnection } from '../lib/supabase';
 
 interface AuthState {
   user: User | null;
   loading: boolean;
   error: AuthError | null;
+  message: string | null;
 }
 
 interface AuthContextType extends AuthState {
@@ -13,6 +14,7 @@ interface AuthContextType extends AuthState {
   signOut: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  clearMessage: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,32 +24,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: null,
     loading: true,
     error: null,
+    message: null,
   });
 
-  useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setState(prev => ({
-        ...prev,
-        user: session?.user ?? null,
-        loading: false,
-      }));
-    });
+  const clearMessage = () => {
+    setState(prev => ({ ...prev, message: null}));
+  };
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setState(prev => ({
-        ...prev,
-        user: session?.user ?? null,
-        loading: false,
-      }));
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
+  // Define auth functions
   const signIn = async (email: string, password: string) => {
     try {
       setState(prev => ({ ...prev, error: null }));
@@ -67,17 +51,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     try {
-      setState(prev => ({ ...prev, error: null }));
+      setState(prev => ({ ...prev, error: null, loading: true }));
       const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
       if (error) throw error;
+
+      setState(prev => ({
+        ...prev,
+        message: 'Please check your email for confirmation link',
+        loading: false,
+      }));
+
     } catch (error) {
       setState(prev => ({
         ...prev,
         error: error as AuthError,
+        loading: false,
       }));
+      
       throw error;
     }
   };
@@ -112,6 +108,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  useEffect(() => {
+    async function initializeAuth() {
+      try {
+        // Check Supabase connection
+        const isConnected = await checkSupabaseConnection();
+        if (!isConnected) {
+          throw new Error('Unable to connect to Supabase');
+        }
+
+        // Check active session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        setState(prev => ({
+          ...prev,
+          user: session?.user ?? null,
+          loading: false,
+        }));
+
+        // Listen for auth changes
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+          setState(prev => ({
+            ...prev,
+            user: session?.user ?? null,
+            loading: false,
+          }));
+        });
+
+        return () => subscription.unsubscribe();
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        setState(prev => ({
+          ...prev,
+          error: error as AuthError,
+          loading: false,
+        }));
+      }
+    }
+
+    initializeAuth();
+  }, []);
+
   // Show loading state
   if (state.loading) {
     return (
@@ -121,22 +161,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Show error state if there's a connection error
+  if (state.error && !state.loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="bg-red-50 text-red-700 p-4 rounded-lg max-w-md">
+          <h3 className="font-bold">Connection Error</h3>
+          <p>{state.error.message}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 bg-red-100 text-red-700 px-4 py-2 rounded hover:bg-red-200"
+          >
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const value = {
+    ...state,
+    signIn,
+    signOut,
+    signUp,
+    resetPassword,
+    clearMessage,
+  };
+
   return (
-    <AuthContext.Provider
-      value={{
-        ...state,
-        signIn,
-        signOut,
-        signUp,
-        resetPassword,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Custom hook for using auth context
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
