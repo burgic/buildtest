@@ -4,46 +4,66 @@ import { Workflow } from '../types/workflow.types';
 import { Tables } from '../lib/database.types';
 import { v4 as uuidv4 } from 'uuid';
 
-// Helper function to convert database workflow to app workflow
-function convertDatabaseWorkflow(dbWorkflow: Tables['workflows']['Row']): Workflow {
-  return {
-    id: dbWorkflow.id,
-    advisorId: dbWorkflow.advisor_id,
-    title: dbWorkflow.title,
-    sections: dbWorkflow.sections as WorkflowSection[],
-    status: dbWorkflow.status,
-    createdAt: new Date(dbWorkflow.created_at),
-    updatedAt: new Date(dbWorkflow.updated_at)
-  };
+interface Workflow {
+  id: string;
+  title: string;
+  advisor_id: string;
+  status: 'draft' | 'active' | 'completed' | 'archived';
+  sections: any[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export class WorkflowService {
-  static async getWorkflowByLinkId(linkId: string): Promise<Workflow> {
+  static async createWorkflow(advisorId: string, title: string): Promise<Workflow> {
     const { data, error } = await supabase
-      .from('workflow_links')
-      .select(`
-        *,
-        workflow:workflows(*)
-      `)
-      .eq('id', linkId)
+      .from('workflows')
+      .insert({
+        advisor_id: advisorId,
+        title: title,
+        status: 'draft',
+        sections: []
+      })
+      .select()
       .single();
 
-    if (error) throw error;
-    if (!data?.workflow) throw new Error('Workflow not found');
-    
-    return convertDatabaseWorkflow(data.workflow);
+    if (error) {
+      console.error('Error creating workflow:', error);
+      throw error;
+    }
+
+    return data;
   }
 
-  static async saveFormResponse(workflowId: string, sectionId: string, formData: any) {
-    const { error } = await supabase
-      .from('form_responses')
-      .insert({
-        workflow_id: workflowId,
-        section_id: sectionId,
-        data: formData,
-      });
+  static async saveFormResponse(workflowId: string, sectionId: string, data: any) {
+    console.log('Saving form response:', {
+      workflow_id: workflowId,
+      section_id: sectionId,
+      data: data
+    });
 
-    if (error) throw error;
+    try {
+      const { data: response, error } = await supabase
+        .from('form_responses')
+        .insert({
+          workflow_id: workflowId,
+          section_id: sectionId,
+          data: data
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error saving form response:', error);
+        throw error;
+      }
+
+      console.log('Successfully saved form response:', response);
+      return response;
+    } catch (error) {
+      console.error('Error in saveFormResponse:', error);
+      throw error;
+    }
   }
 
   static async getFormResponses(workflowId: string) {
@@ -57,39 +77,26 @@ export class WorkflowService {
     return data;
   }
 
+  static async getWorkflow(workflowId: string): Promise<Workflow> {
+    const { data, error } = await supabase
+      .from('workflows')
+      .select('*')
+      .eq('id', workflowId)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
   static async updateWorkflow(workflowId: string, updates: Partial<Workflow>) {
     const { data, error } = await supabase
       .from('workflows')
-      .update({
-        title: updates.title,
-        status: updates.status,
-        sections: updates.sections,
-        updated_at: new Date().toISOString()
-      })
+      .update(updates)
       .eq('id', workflowId)
       .select()
       .single();
 
     if (error) throw error;
-    return convertDatabaseWorkflow(data);
+    return data;
   }
-
-  static async createWorkflow(advisorId: string, workflowData: Partial<Workflow>) {
-    const { data, error } = await supabase
-      .from('workflows')
-      .insert({
-        id: uuidv4(),
-        advisor_id: advisorId,
-        title:workflowData.title,
-        status:workflowData.status || 'draft',
-        sections: workflowData.sections || []
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return convertDatabaseWorkflow;
-  
-}
-
 }

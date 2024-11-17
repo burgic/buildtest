@@ -152,7 +152,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) throw error;
         
         if (mounted) {
-          console.log('Initial session:', session);
           setState(prev => ({
             ...prev,
             session,
@@ -164,7 +163,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Set up auth listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
-            console.log('Auth state changed:', event, session);
             
             if (mounted) {
               setState(prev => ({
@@ -203,7 +201,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           subscription.unsubscribe();
         };
       } catch (error) {
-        console.error('Auth initialization error:', error);
         if (mounted) {
           setState(prev => ({
             ...prev,

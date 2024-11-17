@@ -3,13 +3,6 @@ import debounce from 'lodash/debounce';
 import { useWorkflow } from '../../context/WorkflowContext';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 
-interface AutosaveFormProps {
-  sectionId: string;
-  initialData?: any;
-  children: React.ReactNode;
-  onSave?: (data: any) => void;
-}
-
 export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   sectionId,
   initialData = {},
@@ -26,28 +19,27 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   // Create debounced save function
   const debouncedSave = useCallback(
     debounce(async (data: any) => {
+      console.log('Attempting to save form data:', {
+        sectionId,
+        data
+      });
+
       try {
         setSaving(true);
         setError(null);
         await saveProgress(sectionId, data);
+        console.log('Successfully saved form data');
         setLastSaved(new Date());
         onSave?.(data);
       } catch (err) {
+        console.error('Error in debouncedSave:', err);
         setError(err instanceof Error ? err.message : 'Failed to save progress');
-        console.error('Error saving form:', err);
       } finally {
         setSaving(false);
       }
-    }, 1500), // Debounce for 1.5 seconds
+    }, 1500),
     [sectionId, saveProgress, onSave]
   );
-
-  // Clean up debounce on unmount
-  useEffect(() => {
-    return () => {
-      debouncedSave.cancel();
-    };
-  }, [debouncedSave]);
 
   const handleInputChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -55,6 +47,12 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     const { name, value, type } = event.target;
     const newValue = type === 'number' ? parseFloat(value) || 0 : value;
     
+    console.log('Input changed:', {
+      name,
+      value: newValue,
+      type
+    });
+
     const newFormData = {
       ...formData,
       [name]: newValue
@@ -64,12 +62,14 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     debouncedSave(newFormData);
   };
 
-  // Provide form context to children
-  const formContext = {
-    formData,
-    handleInputChange,
-    saving
-  };
+  // Log initial mount and cleanup
+  useEffect(() => {
+    console.log('AutosaveForm mounted with initial data:', initialData);
+    return () => {
+      console.log('AutosaveForm unmounting');
+      debouncedSave.cancel();
+    };
+  }, [debouncedSave, initialData]);
 
   return (
     <div className="space-y-4">

@@ -1,108 +1,160 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, Save } from 'lucide-react';
 import FormSection from '../components/FormSection';
-import { DocumentUpload } from '../components/client/DocumentUpload';
 import { useWorkflow } from '../context/WorkflowContext';
 
-interface ClientPortalProps {
-  workflowId?: string;
-}
-
-export const ClientPortal: React.FC<ClientPortalProps> = ({ workflowId }) => {
+const ClientPortal: React.FC = () => {
+  const { currentWorkflow, saveProgress } = useWorkflow();
   const [activeSection, setActiveSection] = useState('personal');
-  const { saveProgress } = useWorkflow();
-
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  
   const sections = [
     { id: 'personal', title: 'Personal Details' },
     { id: 'employment', title: 'Employment & Income' },
     { id: 'expenses', title: 'Monthly Expenses' },
     { id: 'assets', title: 'Assets & Liabilities' },
-    { id: 'goals', title: 'Financial Goals' },
+    { id: 'goals', title: 'Financial Goals' }
   ];
 
+
+  const handleSectionChange = (sectionId: string) => {
+    setActiveSection(sectionId);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  };
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+
+    if (!currentWorkflow?.id) {
+      console.error('No active workflow found');
+      setSaveError('No active workflow available');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setSaveError(null);
+
+      const formElement = document.querySelector(`#${activeSection}-form`) as HTMLFormElement;
+      if (!formElement) {
+        throw new Error('Form element not found');
+      }
+
+      const formData = new FormData(formElement);
+      const data = Object.fromEntries(formData.entries());
+    
+
+      await saveProgress(activeSection, data);
+      
+      // Show success message
+      alert('Progress saved successfully!');
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Failed to save progress');
+      alert('Failed to save progress. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Render functions remain the same...
   const renderPersonalDetails = () => (
-    <div className="grid grid-cols-2 gap-6">
-      <FormSection label="Full Name" placeholder="John Doe" />
-      <FormSection label="Email" type="email" placeholder="john@example.com" />
-      <FormSection label="Phone" type="tel" placeholder="+1 (555) 000-0000" />
-      <FormSection label="Address" placeholder="123 Main St" />
-    </div>
+    <form id="personal-form" className="grid grid-cols-2 gap-6">
+      <FormSection 
+        label="Full Name" 
+        name="fullName"
+        placeholder="John Doe" 
+        onChange={handleInputChange}
+      />
+      <FormSection 
+        label="Email" 
+        name="email"
+        type="email" 
+        placeholder="john@example.com" 
+        onChange={handleInputChange}
+      />
+      <FormSection 
+        label="Phone" 
+        name="phone"
+        type="tel" 
+        placeholder="+1 (555) 000-0000" 
+        onChange={handleInputChange}
+      />
+      <FormSection 
+        label="Address" 
+        name="address"
+        placeholder="123 Main St" 
+        onChange={handleInputChange}
+      />
+    </form>
   );
 
   const renderEmployment = () => (
-    <div className="space-y-6">
+    <form id="employment-form" className="space-y-6">
       <div className="grid grid-cols-2 gap-6">
-        <FormSection label="Employer" placeholder="Company Name" />
-        <FormSection label="Position" placeholder="Job Title" />
-        <FormSection label="Annual Income" type="number" placeholder="75000" />
-        <FormSection label="Years Employed" type="number" placeholder="5" />
+        <FormSection 
+          label="Employer" 
+          name="employer"
+          placeholder="Company Name" 
+          onChange={handleInputChange}
+        />
+        <FormSection 
+          label="Position" 
+          name="position"
+          placeholder="Job Title" 
+          onChange={handleInputChange}
+        />
+        <FormSection 
+          label="Annual Income" 
+          name="annualIncome"
+          type="number" 
+          placeholder="75000" 
+          onChange={handleInputChange}
+        />
+        <FormSection 
+          label="Years Employed" 
+          name="yearsEmployed"
+          type="number" 
+          placeholder="5" 
+          onChange={handleInputChange}
+        />
       </div>
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-800">Additional Income Sources</h3>
-        <div className="grid grid-cols-2 gap-6">
-          <FormSection label="Source" placeholder="Rental Income" />
-          <FormSection label="Amount" type="number" placeholder="1000" />
-        </div>
-      </div>
-    </div>
+    </form>
   );
 
   const renderExpenses = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-6">
-        <FormSection label="Housing" type="number" placeholder="2000" />
-        <FormSection label="Utilities" type="number" placeholder="200" />
-        <FormSection label="Transportation" type="number" placeholder="400" />
-        <FormSection label="Insurance" type="number" placeholder="300" />
-        <FormSection label="Food & Groceries" type="number" placeholder="600" />
-        <FormSection label="Entertainment" type="number" placeholder="200" />
-        <FormSection label="Healthcare" type="number" placeholder="300" />
-        <FormSection label="Debt Payments" type="number" placeholder="500" />
-      </div>
-    </div>
+    <form id="expenses-form" className="grid grid-cols-2 gap-6">
+      <FormSection label="Housing" name="housing" type="number" placeholder="2000" onChange={handleInputChange} />
+      <FormSection label="Utilities" name="utilities" type="number" placeholder="200" onChange={handleInputChange} />
+      <FormSection label="Transportation" name="transportation" type="number" placeholder="400" onChange={handleInputChange} />
+      <FormSection label="Insurance" name="insurance" type="number" placeholder="300" onChange={handleInputChange} />
+    </form>
   );
 
   const renderAssets = () => (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-800">Assets</h3>
-        <div className="grid grid-cols-2 gap-6">
-          <FormSection label="Cash & Savings" type="number" placeholder="50000" />
-          <FormSection label="Investments" type="number" placeholder="100000" />
-          <FormSection label="Property Value" type="number" placeholder="500000" />
-          <FormSection label="Vehicle Value" type="number" placeholder="25000" />
-        </div>
+    <form id="assets-form" className="space-y-6">
+      <div className="grid grid-cols-2 gap-6">
+        <FormSection label="Cash & Savings" name="cashSavings" type="number" placeholder="50000" onChange={handleInputChange} />
+        <FormSection label="Investments" name="investments" type="number" placeholder="100000" onChange={handleInputChange} />
+        <FormSection label="Property Value" name="propertyValue" type="number" placeholder="500000" onChange={handleInputChange} />
+        <FormSection label="Vehicle Value" name="vehicleValue" type="number" placeholder="25000" onChange={handleInputChange} />
       </div>
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-800">Liabilities</h3>
-        <div className="grid grid-cols-2 gap-6">
-          <FormSection label="Mortgage Balance" type="number" placeholder="400000" />
-          <FormSection label="Car Loan" type="number" placeholder="20000" />
-          <FormSection label="Credit Card Debt" type="number" placeholder="5000" />
-          <FormSection label="Other Loans" type="number" placeholder="10000" />
-        </div>
-      </div>
-    </div>
+    </form>
   );
 
   const renderGoals = () => (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-800">Retirement Planning</h3>
-        <div className="grid grid-cols-2 gap-6">
-          <FormSection label="Target Retirement Age" type="number" placeholder="65" />
-          <FormSection label="Desired Monthly Income" type="number" placeholder="5000" />
-        </div>
+    <form id="goals-form" className="space-y-6">
+      <div className="grid grid-cols-2 gap-6">
+        <FormSection label="Target Retirement Age" name="retirementAge" type="number" placeholder="65" onChange={handleInputChange} />
+        <FormSection label="Monthly Income Goal" name="monthlyIncomeGoal" type="number" placeholder="5000" onChange={handleInputChange} />
+        <FormSection label="Goal Description" name="goalDescription" placeholder="Buy a vacation home" onChange={handleInputChange} />
+        <FormSection label="Target Amount" name="targetAmount" type="number" placeholder="300000" onChange={handleInputChange} />
       </div>
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-800">Other Goals</h3>
-        <div className="grid grid-cols-2 gap-6">
-          <FormSection label="Goal Description" placeholder="Buy a vacation home" />
-          <FormSection label="Target Amount" type="number" placeholder="300000" />
-          <FormSection label="Target Date" type="date" />
-        </div>
-      </div>
-    </div>
+    </form>
   );
 
   const renderActiveSection = () => {
@@ -122,19 +174,16 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ workflowId }) => {
     }
   };
 
-  const handleSave = async () => {
-    if (!workflowId) return;
-    
-    try {
-      await saveProgress(activeSection, {
-        // Get form data for the active section
-        // You'll need to implement this based on your form state management
-      });
-    } catch (error) {
-      console.error('Error saving progress:', error);
-      // Handle error (show toast notification, etc.)
-    }
-  };
+  if (!currentWorkflow) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center text-gray-600">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div>
+          <p>Loading workflow...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -145,7 +194,7 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ workflowId }) => {
           {sections.map((section) => (
             <button
               key={section.id}
-              onClick={() => setActiveSection(section.id)}
+              onClick={() => handleSectionChange(section.id)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 activeSection === section.id
                   ? 'bg-blue-600 text-white'
@@ -161,32 +210,43 @@ export const ClientPortal: React.FC<ClientPortalProps> = ({ workflowId }) => {
           {renderActiveSection()}
 
           <div className="flex justify-between pt-6 border-t">
-            {workflowId && (
-              <DocumentUpload 
-                workflowId={workflowId} 
-                onUploadComplete={(doc) => {
-                  // Handle document upload completion
-                  console.log('Document uploaded:', doc);
-                }} 
-              />
-            )}
+            <button 
+              className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              disabled={saving}
+            >
+              <Upload className="w-4 h-4" />
+              <span>Upload Documents</span>
+            </button>
             <button 
               onClick={handleSave}
-              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              disabled={saving}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
+                saving 
+                  ? 'bg-blue-400 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              } text-white`}
             >
-              <Save className="w-4 h-4" />
-              <span>Save Progress</span>
+              {saving ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              <span>{saving ? 'Saving...' : 'Save Progress'}</span>
             </button>
           </div>
+
+          {saveError && (
+            <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-lg">
+              {saveError}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-// Add default export
 export default ClientPortal;
-
 /*
 
 import React, { useState } from 'react';
