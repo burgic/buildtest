@@ -1,5 +1,5 @@
 // src/pages/client/workflow/[id].tsx
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import ClientPortal from '../../../components/client/ClientPortal';
 import { WorkflowService } from '../../../services/WorkflowService';

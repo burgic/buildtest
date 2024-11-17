@@ -1,44 +1,64 @@
 import React, { useEffect, useState } from 'react';
-import { database } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
+import type { Tables } from '../../lib/database.types';
 
 interface WorkflowViewerProps {
   workflowId: string;
 }
 
-interface Response {
-  id: string;
-  data: any;
-  created_at: string;
-}
+type WorkflowResponse = Tables['workflow_responses']['Row'];
 
 export function WorkflowViewer({ workflowId }: WorkflowViewerProps) {
-  const [responses, setResponses] = useState<Response[]>([]);
+  const [responses, setResponses] = useState<WorkflowResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Initial fetch
-    const fetchWorkflow = async () => {
+    const fetchResponses = async () => {
       try {
-        const data = await database.getWorkflow(workflowId);
-        setResponses(data.responses || []);
+        const { data, error } = await supabase
+          .from('workflow_responses')
+          .select('*')
+          .eq('workflow_id', workflowId)
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        setResponses(data || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load workflow');
+        setError(err instanceof Error ? err.message : 'Failed to load responses');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchWorkflow();
+    fetchResponses();
 
     // Subscribe to real-time updates
-    const subscription = database.subscribeToWorkflow(
-      workflowId,
-      (payload) => {
+    const subscription = supabase
+      .channel(`workflow-${workflowId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'workflow_responses',
+        filter: `workflow_id=eq.${workflowId}`
+      }, (payload) => {
         // Update responses when new data comes in
-        setResponses(current => [...current, payload.new]);
-      }
-    );
+        if (payload.eventType === 'INSERT') {
+          setResponses(current => [...current, payload.new as WorkflowResponse]);
+        } else if (payload.eventType === 'UPDATE') {
+          setResponses(current =>
+            current.map(response =>
+              response.id === payload.new.id ? payload.new as WorkflowResponse : response
+            )
+          );
+        } else if (payload.eventType === 'DELETE') {
+          setResponses(current =>
+            current.filter(response => response.id !== payload.old.id)
+          );
+        }
+      })
+      .subscribe();
 
     return () => {
       subscription.unsubscribe();
@@ -46,12 +66,16 @@ export function WorkflowViewer({ workflowId }: WorkflowViewerProps) {
   }, [workflowId]);
 
   if (loading) {
-    return <div className="py-4">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="py-4 text-red-600">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
         Error: {error}
       </div>
     );
@@ -59,7 +83,7 @@ export function WorkflowViewer({ workflowId }: WorkflowViewerProps) {
 
   if (!responses.length) {
     return (
-      <div className="py-4 text-gray-500">
+      <div className="text-center py-8 text-gray-500">
         No responses yet
       </div>
     );
@@ -70,14 +94,23 @@ export function WorkflowViewer({ workflowId }: WorkflowViewerProps) {
       {responses.map(response => (
         <div 
           key={response.id} 
-          className="bg-white p-4 rounded-lg shadow"
+          className="bg-white shadow rounded-lg p-4"
         >
-          <div className="text-sm text-gray-500">
-            {new Date(response.created_at).toLocaleString()}
+          <div className="flex justify-between items-start mb-2">
+            <div>
+              <span className="text-sm font-medium text-gray-900">
+                Section: {response.section_id}
+              </span>
+              <span className="text-sm text-gray-500 ml-4">
+                {new Date(response.created_at).toLocaleString()}
+              </span>
+            </div>
           </div>
-          <pre className="mt-2 whitespace-pre-wrap">
-            {JSON.stringify(response.data, null, 2)}
-          </pre>
+          <div className="bg-gray-50 rounded p-3 text-sm">
+            <pre className="whitespace-pre-wrap">
+              {JSON.stringify(response.data, null, 2)}
+            </pre>
+          </div>
         </div>
       ))}
     </div>

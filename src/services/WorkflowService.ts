@@ -1,7 +1,21 @@
 // src/services/WorkflowService.ts
 import { supabase } from '../lib/supabase';
 import { Workflow } from '../types/workflow.types';
+import { Tables } from '../lib/database.types';
 import { v4 as uuidv4 } from 'uuid';
+
+// Helper function to convert database workflow to app workflow
+function convertDatabaseWorkflow(dbWorkflow: Tables['workflows']['Row']): Workflow {
+  return {
+    id: dbWorkflow.id,
+    advisorId: dbWorkflow.advisor_id,
+    title: dbWorkflow.title,
+    sections: dbWorkflow.sections as WorkflowSection[],
+    status: dbWorkflow.status,
+    createdAt: new Date(dbWorkflow.created_at),
+    updatedAt: new Date(dbWorkflow.updated_at)
+  };
+}
 
 export class WorkflowService {
   static async getWorkflowByLinkId(linkId: string): Promise<Workflow> {
@@ -17,7 +31,7 @@ export class WorkflowService {
     if (error) throw error;
     if (!data?.workflow) throw new Error('Workflow not found');
     
-    return data.workflow as Workflow;
+    return convertDatabaseWorkflow(data.workflow);
   }
 
   static async saveFormResponse(workflowId: string, sectionId: string, formData: any) {
@@ -49,12 +63,14 @@ export class WorkflowService {
       .insert({
         id: uuidv4(),
         advisor_id: advisorId,
-        ...workflowData,
+        title:workflowData.title,
+        status:workflowData.status || 'draft',
+        sections: workflowData.sections || []
       })
       .select()
       .single();
 
     if (error) throw error;
-    return data as Workflow;
+    return convertDatabaseWorkflow;
   }
 }
