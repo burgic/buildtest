@@ -1,32 +1,33 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
+import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
 interface AuthState {
   user: User | null;
   loading: boolean;
-  error: Error | null;
+  error: AuthError | null;
 }
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [authState, setAuthState] = useState<AuthState>({
+  const [state, setState] = useState<AuthState>({
     user: null,
     loading: true,
     error: null,
   });
 
   useEffect(() => {
-    // Check active sessions and set the user
+    // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setAuthState(prev => ({
+      setState(prev => ({
         ...prev,
         user: session?.user ?? null,
         loading: false,
@@ -37,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthState(prev => ({
+      setState(prev => ({
         ...prev,
         user: session?.user ?? null,
         loading: false,
@@ -49,15 +50,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
+      setState(prev => ({ ...prev, error: null }));
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) throw error;
     } catch (error) {
-      setAuthState(prev => ({
+      setState(prev => ({
         ...prev,
-        error: error as Error,
+        error: error as AuthError,
       }));
       throw error;
     }
@@ -65,15 +67,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     try {
+      setState(prev => ({ ...prev, error: null }));
       const { error } = await supabase.auth.signUp({
         email,
         password,
       });
       if (error) throw error;
     } catch (error) {
-      setAuthState(prev => ({
+      setState(prev => ({
         ...prev,
-        error: error as Error,
+        error: error as AuthError,
       }));
       throw error;
     }
@@ -81,25 +84,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      setState(prev => ({ ...prev, error: null }));
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     } catch (error) {
-      setAuthState(prev => ({
+      setState(prev => ({
         ...prev,
-        error: error as Error,
+        error: error as AuthError,
       }));
       throw error;
     }
   };
 
-  const value = {
-    ...authState,
-    signIn,
-    signOut,
-    signUp,
+  const resetPassword = async (email: string) => {
+    try {
+      setState(prev => ({ ...prev, error: null }));
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        error: error as AuthError,
+      }));
+      throw error;
+    }
   };
 
-  if (authState.loading) {
+  // Show loading state
+  if (state.loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
@@ -107,9 +121,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        ...state,
+        signIn,
+        signOut,
+        signUp,
+        resetPassword,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
+// Custom hook for using auth context
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
