@@ -7,6 +7,7 @@ import { ProtectedRoute } from './components/common/ProtectedRoute';
 import AdvisorDashboard from './pages/AdvisorDashboard';
 import ClientPortal from './pages/ClientPortal';
 import Login from './pages/auth/login';
+import Register from './pages/auth/register';
 import './index.css';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
@@ -20,6 +21,7 @@ function App() {
               <AppLayout>
                 <Routes>
                   <Route path="/auth/login" element={<Login />} />
+                  <Route path="auth/register" element = {<Register/>} />
                   <Route
                     path="/advisor/*"
                     element={
