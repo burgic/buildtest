@@ -1,6 +1,5 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from './context/AuthProvider';
 import { WorkflowProvider } from './context/WorkflowContext';
 import { AppLayout } from './components/AppLayout';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
