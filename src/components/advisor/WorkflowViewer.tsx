@@ -40,7 +40,7 @@ export function WorkflowViewer({ workflowId }: WorkflowViewerProps) {
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'workflow_responses',
+        table: 'form_responses',
         filter: `workflow_id=eq.${workflowId}`
       }, (payload) => {
         // Update responses when new data comes in

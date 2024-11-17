@@ -55,7 +55,7 @@ export interface Database {
             expires_at?: string;
           };
         };
-        workflow_responses: {
+        form_responses: {
           Row: {
             id: string;
             workflow_id: string;

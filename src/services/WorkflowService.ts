@@ -36,7 +36,7 @@ export class WorkflowService {
 
   static async saveFormResponse(workflowId: string, sectionId: string, formData: any) {
     const { error } = await supabase
-      .from('workflow_responses')
+      .from('form_responses')
       .insert({
         workflow_id: workflowId,
         section_id: sectionId,
@@ -46,15 +46,32 @@ export class WorkflowService {
     if (error) throw error;
   }
 
-  static async getWorkflowResponses(workflowId: string) {
+  static async getFormResponses(workflowId: string) {
     const { data, error } = await supabase
-      .from('workflow_responses')
+      .from('form_responses')
       .select('*')
       .eq('workflow_id', workflowId)
       .order('created_at', { ascending: true });
 
     if (error) throw error;
     return data;
+  }
+
+  static async updateWorkflow(workflowId: string, updates: Partial<Workflow>) {
+    const { data, error } = await supabase
+      .from('workflows')
+      .update({
+        title: updates.title,
+        status: updates.status,
+        sections: updates.sections,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', workflowId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return convertDatabaseWorkflow(data);
   }
 
   static async createWorkflow(advisorId: string, workflowData: Partial<Workflow>) {
@@ -72,5 +89,7 @@ export class WorkflowService {
 
     if (error) throw error;
     return convertDatabaseWorkflow;
-  }
+  
+}
+
 }

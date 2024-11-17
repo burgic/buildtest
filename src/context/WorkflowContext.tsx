@@ -1,12 +1,13 @@
-// src/context/WorkflowContext.tsx
 import React, { createContext, useContext, useState } from 'react';
-import type { Workflow } from '../types/workflow.types';
+import { Workflow, WorkflowSection } from '../types/workflow.types';
 import { WorkflowService } from '../services/WorkflowService';
 
 interface WorkflowContextType {
   currentWorkflow: Workflow | null;
   setCurrentWorkflow: (workflow: Workflow | null) => void;
-  saveProgress: (sectionId: string, data: any) => Promise<void>;
+  saveProgress: (workflowId: string, sectionId: string, data: any) => Promise<void>;
+  loading: boolean;
+  error: Error | null;
 }
 
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
@@ -17,15 +18,17 @@ interface WorkflowProviderProps {
 
 export function WorkflowProvider({ children }: WorkflowProviderProps) {
   const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
-  const saveProgress = async (sectionId: string, data: any) => {
+  const saveProgress = async (workflowId: string, sectionId: string, data: any) => {
     try {
-      if (!currentWorkflow) {
-        throw new Error('No active workflow');
-      }
-      
-      await WorkflowService.saveFormResponse(currentWorkflow.id, sectionId, data);
-      
+      setLoading(true);
+      setError(null);
+
+      await WorkflowService.saveFormResponse(workflowId, sectionId, data);
+
+      // Update the local workflow state
       setCurrentWorkflow(prev => {
         if (!prev) return null;
         return {
@@ -37,16 +40,21 @@ export function WorkflowProvider({ children }: WorkflowProviderProps) {
           )
         };
       });
-    } catch (error) {
-      console.error('Error saving progress:', error);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to save progress');
+      setError(error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const value = {
     currentWorkflow,
     setCurrentWorkflow,
-    saveProgress
+    saveProgress,
+    loading,
+    error
   };
 
   return (
