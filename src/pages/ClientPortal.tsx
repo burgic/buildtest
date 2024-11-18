@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Upload } from 'lucide-react';
-import type { WorkflowSection, FormField } from '../../types';
-import { AutosaveForm } from '../forms/AutosaveForm';
-import FormSection from '..components/forms/FormSection';
+import type { WorkflowSection } from '../types/workflow.types';
+import { AutosaveForm } from '../components/forms/AutosaveForm';
+import FormSection from '../components/forms/FormSection';
 
 export interface ClientPortalProps {
   sections: WorkflowSection[];
