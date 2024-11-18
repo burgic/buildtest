@@ -1,160 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, Save } from 'lucide-react';
-import FormSection from '../components/forms/FormSection';
-import { useWorkflow } from '../context/WorkflowContext';
+import { useState } from 'react';
+import { Upload } from 'lucide-react';
+import type { WorkflowSection, FormField } from '../../types';
+import { AutosaveForm } from '../forms/AutosaveForm';
+import FormSection from '..components/forms/FormSection';
 
-const ClientPortal: React.FC = () => {
-  const { currentWorkflow, saveProgress } = useWorkflow();
-  const [activeSection, setActiveSection] = useState('personal');
-  const [formData, setFormData] = useState<{ [key: string]: any }>({});
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+export interface ClientPortalProps {
+  sections: WorkflowSection[];
+  onSave: (sectionId: string, data: any) => Promise<void>;
+}
 
-  // Load existing data when section changes
-  useEffect(() => {
-    if (currentWorkflow?.sections) {
-      const section = currentWorkflow.sections.find((s: any) => s.id === activeSection);
-      if (section?.data) {
-        console.log('Loading existing section data:', section.data);
-        setFormData(section.data);
-      } else {
-        setFormData({});
-      }
-    }
-  }, [activeSection, currentWorkflow]);
+export function ClientPortal({ sections, onSave }: ClientPortalProps) {
+  const [activeSection, setActiveSection] = useState<string>(
+    sections[0]?.id || ''
+  );
+  const [error, setError] = useState<string | null>(null);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type } = e.target;
-    const newValue = type === 'number' ? (value ? parseFloat(value) : '') : value;
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: newValue
-    }));
-
-    console.log('Form data updated:', {
-      field: name,
-      value: newValue,
-      allData: {
-        ...formData,
-        [name]: newValue
-      }
-    });
-  };
-
-  const handleSave = async () => {
-    console.log('Save initiated for section:', activeSection);
-    console.log('Data to save:', formData);
-
-    if (!Object.keys(formData).length) {
-      console.log('No data to save');
-      return;
-    }
-
+  const handleSave = async (sectionId: string, data: any) => {
     try {
-      setSaving(true);
-      setSaveError(null);
-
-      await saveProgress(activeSection, formData);
-      console.log('Save successful');
-      
-      // Show success message
-      alert('Progress saved successfully!');
-    } catch (error) {
-      console.error('Error saving form:', error);
-      setSaveError(error instanceof Error ? error.message : 'Failed to save progress');
-      alert('Failed to save progress. Please try again.');
-    } finally {
-      setSaving(false);
+      setError(null);
+      await onSave(sectionId, data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save progress');
+      throw err;
     }
   };
 
-  const renderFormField = (label: string, name: string, type: string = 'text', placeholder: string = '') => (
-    <FormSection
-      label={label}
-      name={name}
-      type={type}
-      placeholder={placeholder}
-      value={formData[name] || ''}
-      onChange={handleInputChange}
-    />
-  );
-
-  const renderPersonalDetails = () => (
-    <form id="personal-form" className="grid grid-cols-2 gap-6">
-      {renderFormField('Full Name', 'fullName', 'text', 'John Doe')}
-      {renderFormField('Email', 'email', 'email', 'john@example.com')}
-      {renderFormField('Phone', 'phone', 'tel', '+1 (555) 000-0000')}
-      {renderFormField('Address', 'address', 'text', '123 Main St')}
-    </form>
-  );
-
-  const renderEmployment = () => (
-    <form id="employment-form" className="space-y-6">
-      <div className="grid grid-cols-2 gap-6">
-        {renderFormField('Employer', 'employer', 'text', 'Company Name')}
-        {renderFormField('Position', 'position', 'text', 'Job Title')}
-        {renderFormField('Annual Income', 'annualIncome', 'number', '75000')}
-        {renderFormField('Years Employed', 'yearsEmployed', 'number', '5')}
+  if (!sections.length) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        No sections available
       </div>
-    </form>
-  );
+    );
+  }
 
-  const renderExpenses = () => (
-    <form id="expenses-form" className="grid grid-cols-2 gap-6">
-      {renderFormField('Housing', 'housing', 'number', '2000')}
-      {renderFormField('Utilities', 'utilities', 'number', '200')}
-      {renderFormField('Transportation', 'transportation', 'number', '400')}
-      {renderFormField('Insurance', 'insurance', 'number', '300')}
-    </form>
-  );
-
-  const renderAssets = () => (
-    <form id="assets-form" className="space-y-6">
-      <div className="grid grid-cols-2 gap-6">
-        {renderFormField('Cash & Savings', 'cashSavings', 'number', '50000')}
-        {renderFormField('Investments', 'investments', 'number', '100000')}
-        {renderFormField('Property Value', 'propertyValue', 'number', '500000')}
-        {renderFormField('Vehicle Value', 'vehicleValue', 'number', '25000')}
-      </div>
-    </form>
-  );
-
-  const renderGoals = () => (
-    <form id="goals-form" className="space-y-6">
-      <div className="grid grid-cols-2 gap-6">
-        {renderFormField('Target Retirement Age', 'retirementAge', 'number', '65')}
-        {renderFormField('Monthly Income Goal', 'monthlyIncomeGoal', 'number', '5000')}
-        {renderFormField('Goal Description', 'goalDescription', 'text', 'Buy a vacation home')}
-        {renderFormField('Target Amount', 'targetAmount', 'number', '300000')}
-      </div>
-    </form>
-  );
-
-  const renderActiveSection = () => {
-    switch (activeSection) {
-      case 'personal':
-        return renderPersonalDetails();
-      case 'employment':
-        return renderEmployment();
-      case 'expenses':
-        return renderExpenses();
-      case 'assets':
-        return renderAssets();
-      case 'goals':
-        return renderGoals();
-      default:
-        return null;
-    }
-  };
+  const currentSection = sections.find(s => s.id === activeSection) || sections[0];
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Financial Information Form</h2>
-        
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">
+          Financial Information Form
+        </h2>
+
         <div className="flex space-x-4 mb-8 overflow-x-auto pb-2">
-          {currentWorkflow?.sections?.map((section: any) => (
+          {sections.map((section) => (
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
@@ -169,47 +58,44 @@ const ClientPortal: React.FC = () => {
           ))}
         </div>
 
-        <div className="space-y-6">
-          {renderActiveSection()}
-
-          <div className="flex justify-between pt-6 border-t">
-            <button 
-              className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              disabled={saving}
-            >
-              <Upload className="w-4 h-4" />
-              <span>Upload Documents</span>
-            </button>
-            <button 
-              onClick={handleSave}
-              disabled={saving}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
-                saving 
-                  ? 'bg-blue-400 cursor-not-allowed' 
-                  : 'bg-blue-600 hover:bg-blue-700'
-              } text-white`}
-            >
-              {saving ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              <span>{saving ? 'Saving...' : 'Save Progress'}</span>
-            </button>
+        <AutosaveForm
+          sectionId={currentSection.id}
+          initialData={currentSection.data}
+          onSave={(data) => handleSave(currentSection.id, data)}
+        >
+          <div className="grid grid-cols-2 gap-6">
+            {currentSection.fields.map((field: FormField) => (
+              <FormSection
+                key={field.id}
+                label={field.label}
+                name={field.id}
+                type={field.type}
+                required={field.required}
+                options={field.options}
+                validation={field.validation}
+              />
+            ))}
           </div>
+        </AutosaveForm>
 
-          {saveError && (
-            <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-lg">
-              {saveError}
-            </div>
-          )}
+        {error && (
+          <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        <div className="mt-6 border-t pt-6">
+          <button 
+            className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+          >
+            <Upload className="w-4 h-4" />
+            <span>Upload Supporting Documents</span>
+          </button>
         </div>
       </div>
     </div>
   );
-};
-
-export default ClientPortal;
+}
 /*
 
 import React, { useState } from 'react';

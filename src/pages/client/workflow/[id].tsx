@@ -38,8 +38,10 @@ export default function WorkflowPage() {
   }, [id]);
 
   const handleSave = async (sectionId: string, data: any) => {
+    if (!workflow?.id) return;
+    
     try {
-      await WorkflowService.saveFormResponse(id as string, sectionId, data);
+      await WorkflowService.saveFormResponse(workflow.id, sectionId, data);
     } catch (err) {
       console.error('Error saving form:', err);
       throw err;
@@ -101,9 +103,9 @@ export default function WorkflowPage() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <ClientPortal 
-        workflowId={workflow.id}
-        sections = {workflow.sections}
-        onSave={handleSave}/>
+          sections={workflow.sections}
+          onSave={handleSave}
+        />
       </main>
     </div>
   );
