@@ -23,7 +23,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const location = useLocation();
+  // const location = useLocation();
   
   const [state, setState] = useState<AuthState>({
     user: null,
