@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, AuthError } from '@supabase/supabase-js';
+import { User, AuthError, Session  } from '@supabase/supabase-js';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 interface AuthState {
   user: User | null;
+  session: Session | null;
   loading: boolean;
   error: AuthError | null;
   message: string | null;
@@ -23,36 +24,39 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
-
+  
   const [state, setState] = useState<AuthState>({
     user: null,
+    session: null,
     loading: true,
     error: null,
     message: null,
   });
 
-  // Define auth functions
-
   const signIn = async (email: string, password: string) => {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
-      const { data:authData, error } = await supabase.auth.signInWithPassword({
+      console.log('Attempting sign in for:', email);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) throw error;
 
-      console.log('Sign in sucessful:', authData);
-
+      console.log('Sign in successful:', data);
+      
       setState(prev => ({
         ...prev,
+        user: data.user,
         session: data.session,
-        user: authData,
         loading: false,
       }));
+      
       navigate('/dashboard', { replace: true });
     } catch (error) {
+      console.error('Sign in error:', error);
       setState(prev => ({
         ...prev,
         error: error as AuthError,
@@ -65,35 +69,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string) => {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
-      console.log('Starting signup process')
-      const getSiteURL = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
+      console.log('Starting signup process...');
+      
+      const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+      const redirectTo = `${siteUrl}/auth/callback`;
+      console.log('Redirect URL:', redirectTo);
 
-      const redirectTo = `${getSiteURL()}/auth/callback`;
-      console.log('Redirect URL:', redirectTo)
-
-      const { data: authData, error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: redirectTo,
           data: {
-            role: 'client' // Default role
+            role: 'client'
           }
         }
       });
 
       if (error) {
-        console.error('Signup error:', error)
+        console.error('Signup error:', error);
         throw error;
       }
-      console.log('Signup response:', authData);
 
-      if (authData.user?.identities?.length === 0) {
+      console.log('Signup response:', data);
+
+      if (data?.user?.identities?.length === 0) {
         setState(prev => ({
           ...prev,
           loading: false,
           message: 'This email is already registered. Please sign in instead.',
-        }))
+        }));
+        return;
       }
 
       setState(prev => ({
@@ -103,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }));
 
     } catch (error) {
+      console.error('Signup error:', error);
       setState(prev => ({
         ...prev,
         error: error as AuthError,
@@ -125,12 +132,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading: false,
       }));
       
-      navigate('/auth/login', {
-        state: { from: { pathname: location.pathname, search: location.search } },
-        replace: true,
-      });
+      navigate('/auth/login', { replace: true });
     } catch (error) {
-      console.error("Sign out error:", error)
+      console.error('Sign out error:', error);
       setState(prev => ({
         ...prev,
         error: error as AuthError,
@@ -144,10 +148,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
       
-      const getSiteURL = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
+      const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+      const redirectTo = `${siteUrl}/auth/reset-password`;
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${getSiteURL}/auth/reset-password`,
+        redirectTo,
       });
       
       if (error) throw error;
@@ -167,13 +172,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-
   useEffect(() => {
     let mounted = true;
 
     async function initializeAuth() {
       try {
-        // Get initial session
+        console.log('Initializing auth...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) throw error;
@@ -181,42 +185,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mounted) {
           setState(prev => ({
             ...prev,
-            session,
             user: session?.user ?? null,
+            session: session ?? null,
             loading: false,
           }));
         }
 
-        // Set up auth listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
+            console.log('Auth state change:', event);
             
             if (mounted) {
               setState(prev => ({
                 ...prev,
-                session,
                 user: session?.user ?? null,
+                session: session ?? null,
                 loading: false,
               }));
 
-              // Handle navigation based on auth state
               switch (event) {
                 case 'SIGNED_IN':
                   navigate('/dashboard');
                   break;
                 case 'SIGNED_OUT':
                   navigate('/auth/login');
-                  break;
-                case 'USER_UPDATED':
-                  // Refresh the session
-                  const { data: { session: refreshedSession } } = await supabase.auth.getSession();
-                  if (mounted && refreshedSession) {
-                    setState(prev => ({
-                      ...prev,
-                      session: refreshedSession,
-                      user: refreshedSession.user,
-                    }));
-                  }
                   break;
               }
             }
@@ -228,6 +220,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           subscription.unsubscribe();
         };
       } catch (error) {
+        console.error('Auth initialization error:', error);
         if (mounted) {
           setState(prev => ({
             ...prev,
@@ -239,15 +232,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     initializeAuth();
-  }, []);
+  }, [navigate]);
 
-  const value = {
+  const contextValue: AuthContextType = {
     ...state,
     signIn,
     signOut,
     signUp,
     resetPassword,
-    clearMessage: () => setState(prev => ({ ... prev, message: null})),
+    clearMessage: () => setState(prev => ({ ...prev, message: null })),
   };
 
   if (state.loading) {
@@ -259,7 +252,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
