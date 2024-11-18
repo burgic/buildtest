@@ -54,7 +54,7 @@ function App() {
                   }
                 />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                
+
                 <Route path="*" element={<Navigate to="/auth/login" replace />} />
               </Routes>
               </AppLayout>
