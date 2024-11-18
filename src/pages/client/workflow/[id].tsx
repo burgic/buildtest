@@ -20,12 +20,26 @@ export default function WorkflowPage() {
 
   useEffect(() => {
     async function loadWorkflow() {
-      if (!id) return;
+      if (!id) {
+        setError('No workflow ID provided');
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
         const workflowData = await WorkflowService.getWorkflow(id);
-        setWorkflow(workflowData as WorkflowData);
+        
+        // Ensure sections exist and have required properties
+        const processedWorkflow = {
+          ...workflowData,
+          sections: workflowData.sections?.map(section => ({
+            ...section,
+            fields: section.fields || []
+          })) || []
+        };
+        
+        setWorkflow(processedWorkflow as WorkflowData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load workflow');
         console.error('Error loading workflow:', err);
@@ -103,6 +117,7 @@ export default function WorkflowPage() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <ClientPortal 
+          workflowId={workflow.id}
           sections={workflow.sections}
           onSave={handleSave}
         />
