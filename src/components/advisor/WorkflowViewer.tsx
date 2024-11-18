@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import type { Tables } from '../../lib/database.types';
+import type { Database } from '../../lib/database.types';
+
+type WorkflowResponse = Database['public']['Tables']['form_responses']['Row'];
 
 interface WorkflowViewerProps {
   workflowId: string;
 }
-
-type WorkflowResponse = Tables['workflow_responses']['Row'];
 
 export function WorkflowViewer({ workflowId }: WorkflowViewerProps) {
   const [responses, setResponses] = useState<WorkflowResponse[]>([]);
@@ -14,11 +14,10 @@ export function WorkflowViewer({ workflowId }: WorkflowViewerProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initial fetch
     const fetchResponses = async () => {
       try {
         const { data, error } = await supabase
-          .from('workflow_responses')
+          .from('form_responses')
           .select('*')
           .eq('workflow_id', workflowId)
           .order('created_at', { ascending: true });
@@ -34,7 +33,6 @@ export function WorkflowViewer({ workflowId }: WorkflowViewerProps) {
 
     fetchResponses();
 
-    // Subscribe to real-time updates
     const subscription = supabase
       .channel(`workflow-${workflowId}`)
       .on('postgres_changes', {
@@ -42,8 +40,7 @@ export function WorkflowViewer({ workflowId }: WorkflowViewerProps) {
         schema: 'public',
         table: 'form_responses',
         filter: `workflow_id=eq.${workflowId}`
-      }, (payload) => {
-        // Update responses when new data comes in
+      }, (payload: any) => {
         if (payload.eventType === 'INSERT') {
           setResponses(current => [...current, payload.new as WorkflowResponse]);
         } else if (payload.eventType === 'UPDATE') {
@@ -105,11 +102,25 @@ export function WorkflowViewer({ workflowId }: WorkflowViewerProps) {
                 {new Date(response.created_at).toLocaleString()}
               </span>
             </div>
+            <div className="text-sm text-gray-500">
+              Last Updated: {new Date(response.updated_at).toLocaleString()}
+            </div>
           </div>
           <div className="bg-gray-50 rounded p-3 text-sm">
-            <pre className="whitespace-pre-wrap">
+            <pre className="whitespace-pre-wrap font-mono">
               {JSON.stringify(response.data, null, 2)}
             </pre>
+          </div>
+          <div className="mt-2 flex justify-end">
+            <button 
+              className="text-sm text-blue-600 hover:text-blue-800"
+              onClick={() => {
+                // Add functionality to handle response actions
+                console.log('Response action:', response.id);
+              }}
+            >
+              View Details
+            </button>
           </div>
         </div>
       ))}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWorkflow } from '../../context/WorkflowContext';
 import { WorkflowSection } from '../../types/workflow.types';
 import { LoadingSpinner } from '../common/LoadingSpinner';

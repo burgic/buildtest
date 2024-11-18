@@ -11,7 +11,7 @@ import Register from './pages/auth/register';
 import './index.css';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import AuthCallback from './pages/auth/callback';
-import Dashboard from './pages/Dashboard';
+// import Dashboard from './pages/Dashboard';
 
 function App() {
   return (

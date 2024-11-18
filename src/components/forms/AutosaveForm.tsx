@@ -2,6 +2,20 @@ import React, { useState, useEffect, useCallback } from 'react';
 import debounce from 'lodash/debounce';
 import { useWorkflow } from '../../context/WorkflowContext';
 import { LoadingSpinner } from '../common/LoadingSpinner';
+import type { AutosaveFormProps } from '../../types';
+
+interface FormInputProps {
+  name: string;
+  value?: string | number;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+}
+
+export interface AutosaveFormProps {
+  sectionId: string;
+  initialData?: Record<string, any>;
+  children: React.ReactNode;
+  onSave?: (data: Record<string, any>) => void;
+}
 
 export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   sectionId,
@@ -9,26 +23,19 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   children,
   onSave
 }) => {
-  const [formData, setFormData] = useState(initialData);
+  const [formData, setFormData] = useState<Record<string, any>>(initialData);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   const { saveProgress } = useWorkflow();
 
-  // Create debounced save function
   const debouncedSave = useCallback(
-    debounce(async (data: any) => {
-      console.log('Attempting to save form data:', {
-        sectionId,
-        data
-      });
-
+    debounce(async (data: Record<string, any>) => {
       try {
         setSaving(true);
         setError(null);
         await saveProgress(sectionId, data);
-        console.log('Successfully saved form data');
         setLastSaved(new Date());
         onSave?.(data);
       } catch (err) {
@@ -47,12 +54,6 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     const { name, value, type } = event.target;
     const newValue = type === 'number' ? parseFloat(value) || 0 : value;
     
-    console.log('Input changed:', {
-      name,
-      value: newValue,
-      type
-    });
-
     const newFormData = {
       ...formData,
       [name]: newValue
@@ -62,14 +63,11 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     debouncedSave(newFormData);
   };
 
-  // Log initial mount and cleanup
   useEffect(() => {
-    console.log('AutosaveForm mounted with initial data:', initialData);
     return () => {
-      console.log('AutosaveForm unmounting');
       debouncedSave.cancel();
     };
-  }, [debouncedSave, initialData]);
+  }, [debouncedSave]);
 
   return (
     <div className="space-y-4">
@@ -95,9 +93,9 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
       <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
         {React.Children.map(children, child => {
           if (React.isValidElement(child)) {
-            return React.cloneElement(child as React.ReactElement, {
-              ...formContext,
-              value: formData[child.props.name],
+            return React.cloneElement(child, {
+              ...child.props,
+              value: formData[child.props.name] || '',
               onChange: handleInputChange
             });
           }

@@ -1,12 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthProvider';
+import { useAuth } from './AuthProvider';
 import { supabase } from '../lib/supabase';
-import { v4 as uuidv4 } from 'uuid';
+import type { WorkflowSection } from '../types';
 
 interface WorkflowContextType {
-  currentWorkflow: any;
+  currentWorkflow: {
+    id: string;
+    title: string;
+    advisor_id: string;
+    status: 'draft' | 'active' | 'completed' | 'archived';
+    sections: WorkflowSection[];
+  } | null;
   setCurrentWorkflow: (workflow: any) => void;
-  saveProgress: (sectionId: string, data: any) => Promise<void>;
+  saveProgress: (sectionId: string, data: Record<string, any>) => Promise<void>;
   loading: boolean;
   error: Error | null;
 }
@@ -14,7 +20,7 @@ interface WorkflowContextType {
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
 
 export function WorkflowProvider({ children }: { children: React.ReactNode }) {
-  const [currentWorkflow, setCurrentWorkflow] = useState<any>(null);
+  const [currentWorkflow, setCurrentWorkflow] = useState<WorkflowContextType['currentWorkflow']>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const { user } = useAuth();
@@ -30,45 +36,35 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // First, try to find any active workflows
         const { data: existingWorkflows, error: fetchError } = await supabase
           .from('workflows')
           .select('*')
           .eq('advisor_id', session.user.id)
           .eq('status', 'active')
-          .order('created_at', { ascending: false }); // Get most recent first
+          .order('created_at', { ascending: false });
 
-        if (fetchError) {
-          throw fetchError;
-        }
+        if (fetchError) throw fetchError;
 
         let workflow;
         
         if (existingWorkflows && existingWorkflows.length > 0) {
-          // Use the most recent workflow
           workflow = existingWorkflows[0];
           
-          // Optionally, mark other workflows as archived
           if (existingWorkflows.length > 1) {
             const oldWorkflowIds = existingWorkflows
               .slice(1)
               .map(w => w.id);
             
-            const { error: archiveError } = await supabase
+            await supabase
               .from('workflows')
               .update({ status: 'archived' })
               .in('id', oldWorkflowIds);
-
-            if (archiveError) {
-            }
           }
         } else {
-          
-          // Create new workflow
           const newWorkflow = {
             title: 'Financial Information Workflow',
             advisor_id: session.user.id,
-            status: 'active',
+            status: 'active' as const,
             sections: [
               { id: 'personal', title: 'Personal Details', data: {} },
               { id: 'employment', title: 'Employment & Income', data: {} },
@@ -84,15 +80,11 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             .select()
             .single();
 
-          if (createError) {
-            throw createError;
-          }
-
+          if (createError) throw createError;
           workflow = createdWorkflow;
         }
 
         setCurrentWorkflow(workflow);
-
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Failed to initialize workflow'));
       } finally {
@@ -107,96 +99,51 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  const saveProgress = async (sectionId: string, data: any) => {
-    console.log('Starting save progress:', { sectionId, data });
-  
+  const saveProgress = async (sectionId: string, data: Record<string, any>) => {
     if (!currentWorkflow?.id) {
-      console.error('No active workflow found during save attempt');
       throw new Error('No active workflow');
     }
-  
+
     try {
-      // Check authentication
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('No active session');
       }
-  
-      // First, get existing data for this section
-      const { data: existingResponses, error: fetchError } = await supabase
-        .from('form_responses')
-        .select('*')
-        .eq('workflow_id', currentWorkflow.id)
-        .eq('section_id', sectionId)
-        .order('created_at', { ascending: false })
-        .limit(1);
-  
-      if (fetchError) {
-        console.error('Error fetching existing responses:', fetchError);
-        throw fetchError;
-      }
-  
-      // Check if we have existing data
-      const existingData = existingResponses?.[0]?.data || {};
-      
-      if (Object.keys(existingData).length > 0) {
-        console.log('Found existing data:', existingData);
-      } else {
-        console.log('No existing data found, creating new response');
-      }
-  
-      // Merge data (or use just new data if no existing data)
-      const mergedData = {
-        ...existingData,
-        ...data // Use the data parameter passed to the function
-      };
-  
-      console.log('Data to save:', {
-        existingData,
-        newData: data, // Log the incoming data
-        mergedData,
-        isNewResponse: Object.keys(existingData).length === 0
-      });
-  
-      // Save merged data
+
       const { data: response, error: saveError } = await supabase
         .from('form_responses')
         .insert({
           workflow_id: currentWorkflow.id,
           section_id: sectionId,
-          data: mergedData
+          data
         })
         .select()
         .single();
-  
-      if (saveError) {
-        console.error('Error saving form response:', saveError);
-        throw saveError;
-      }
-  
-      console.log('Save successful:', response);
-  
-      // Update local state while preserving any existing data
-      setCurrentWorkflow(prev => ({
+
+      if (saveError) throw saveError;
+
+      setCurrentWorkflow(prev => prev ? {
         ...prev,
         sections: prev.sections.map(section =>
           section.id === sectionId
-            ? {
-                ...section,
-                data: {
-                  ...(section.data || {}),
-                  ...data // Use the data parameter here too
-                }
-              }
+            ? { ...section, data: { ...(section.data || {}), ...data } }
             : section
         )
-      }));
-  
+      } : null);
+
       return response;
     } catch (error) {
       console.error('Error in saveProgress:', error);
       throw error;
     }
+  };
+
+  const value = {
+    currentWorkflow,
+    setCurrentWorkflow,
+    saveProgress,
+    loading,
+    error
   };
 
   if (loading) {
@@ -210,30 +157,8 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center text-red-600 p-4">
-          <p>Error: {error.message}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <WorkflowContext.Provider value={{
-      currentWorkflow,
-      setCurrentWorkflow,
-      saveProgress,
-      loading,
-      error
-    }}>
+    <WorkflowContext.Provider value={value}>
       {children}
     </WorkflowContext.Provider>
   );
