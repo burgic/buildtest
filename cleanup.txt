@@ -1,0 +1,7 @@
+# Files to remove completely
+.env
+dist/
+
+# Patterns to remove from all files
+regex:VITE_SUPABASE_ANON_KEY=[\w\-]+
+regex:VITE_SUPABASE_URL=[\w\-\.]+
