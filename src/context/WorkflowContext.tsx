@@ -12,7 +12,7 @@ interface WorkflowContextType {
     sections: WorkflowSection[];
   } | null;
   setCurrentWorkflow: (workflow: any) => void;
-  saveProgress: (sectionId: string, data: Record<string, any>) => Promise<void>;
+  saveProgress: (sectionId: string, data: Record<string, any>) => Promise<any>;
   loading: boolean;
   error: Error | null;
 }
@@ -138,24 +138,13 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value = {
+  const value: WorkflowContextType = {
     currentWorkflow,
     setCurrentWorkflow,
     saveProgress,
     loading,
     error
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-gray-600">Initializing workflow...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <WorkflowContext.Provider value={value}>

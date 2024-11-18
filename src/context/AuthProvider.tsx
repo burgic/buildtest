@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, AuthError, Session } from '@supabase/supabase-js';
+import { User, AuthError } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
       
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -138,9 +138,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const clearMessage = () => {
-    setState(prev => ({ ...prev, message: null }));
-  };
 
   useEffect(() => {
     let mounted = true;

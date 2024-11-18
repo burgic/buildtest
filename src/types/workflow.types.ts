@@ -1,19 +1,19 @@
+// src/types/workflow.types.ts
 
-// Add 'export' to make the interface available outside this module
-export interface Workflow {
-  id: string;
-  advisorId: string;
-  title: string;
-  sections: WorkflowSection[];
-  createdAt: Date;
-  updatedAt: Date;
-  status: WorkflowStatus;
+export interface WorkflowContextType {
+  currentWorkflow: {
+    id: string;
+    title: string;
+    advisor_id: string;
+    status: 'draft' | 'active' | 'completed' | 'archived';
+    sections: WorkflowSection[];
+  } | null;
+  setCurrentWorkflow: (workflow: any) => void;
+  saveProgress: (sectionId: string, data: Record<string, any>) => Promise<any>;
+  loading: boolean;
+  error: Error | null;
 }
 
-// Export the status type
-export type WorkflowStatus = 'draft' | 'active' | 'completed' | 'archived';
-
-// Export the section interface
 export interface WorkflowSection {
   id: string;
   title: string;
@@ -21,10 +21,9 @@ export interface WorkflowSection {
   fields: FormField[];
   required: boolean;
   order: number;
-  data?: any; // Add this to support the data property used in context
+  data?: any;
 }
 
-// Export the field interface
 export interface FormField {
   id: string;
   label: string;
@@ -39,12 +38,11 @@ export interface FormField {
   };
 }
 
-// Export a type for workflow responses
 export interface WorkflowResponse {
   id: string;
-  workflowId: string;
-  sectionId: string;
+  workflow_id: string;
+  section_id: string;
   data: any;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }

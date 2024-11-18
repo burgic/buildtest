@@ -1,16 +1,16 @@
-// src/services/DocumentService.ts
 import { createWorker } from 'tesseract.js';
 import { supabase } from '../lib/supabase';
+// import type { Tables } from '../lib/database.types';
 
 export class DocumentService {
   static async uploadDocument(
-    workflowLinkId: string,
+    workflowId: string,
     file: File,
-    documentType: 'bank_statement' | 'payslip' | 'utility_bill'
+    documentType: string
   ) {
     // Upload file to Supabase Storage
-    const filename = `${workflowLinkId}/${Date.now()}-${file.name}`;
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const filename = `${workflowId}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage
       .from('documents')
       .upload(filename, file);
 
@@ -23,9 +23,11 @@ export class DocumentService {
     const { data: documentData, error: documentError } = await supabase
       .from('documents')
       .insert({
-        workflow_link_id: workflowLinkId,
+        workflow_id: workflowId,
         file_path: filename,
         original_filename: file.name,
+        document_type: documentType,
+        status: 'processing',
         extracted_data: extractedData
       })
       .select()
@@ -41,7 +43,6 @@ export class DocumentService {
     const { data: { text } } = await worker.recognize(imageData);
     await worker.terminate();
 
-    // Process extracted text based on document type
     return this.parseDocumentText(text, documentType);
   }
 
@@ -55,7 +56,6 @@ export class DocumentService {
   }
 
   private static parseDocumentText(text: string, documentType: string) {
-    // Add specific parsing logic for different document types
     switch (documentType) {
       case 'bank_statement':
         return this.parseBankStatement(text);
@@ -67,6 +67,7 @@ export class DocumentService {
         return { raw_text: text };
     }
   }
+
 
   private static parseBankStatement(text: string) {
     // Add regex patterns to extract relevant information

@@ -2,9 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import debounce from 'lodash/debounce';
 import { useWorkflow } from '../../context/WorkflowContext';
 import { LoadingSpinner } from '../common/LoadingSpinner';
-import type { AutosaveFormProps } from '../../types';
 
-interface FormInputProps {
+export interface FormInputProps {
   name: string;
   value?: string | number;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
@@ -31,7 +30,7 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   const { saveProgress } = useWorkflow();
 
   const debouncedSave = useCallback(
-    debounce(async (data: Record<string, any>) => {
+    debounce(async (sectionId: string, data: Record<string, any>) => {
       try {
         setSaving(true);
         setError(null);
@@ -45,7 +44,7 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
         setSaving(false);
       }
     }, 1500),
-    [sectionId, saveProgress, onSave]
+    [saveProgress, onSave]
   );
 
   const handleInputChange = (
@@ -54,13 +53,17 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     const { name, value, type } = event.target;
     const newValue = type === 'number' ? parseFloat(value) || 0 : value;
     
-    const newFormData = {
-      ...formData,
-      [name]: newValue
-    };
-    
-    setFormData(newFormData);
-    debouncedSave(newFormData);
+    setFormData(prevData => {
+      const newData = {
+        ...prevData,
+        [name]: newValue
+      };
+      
+      // Call debouncedSave with both sectionId and the new data
+      debouncedSave(sectionId, newData);
+      
+      return newData;
+    });
   };
 
   useEffect(() => {

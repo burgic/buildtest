@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useWorkflow } from '../../context/WorkflowContext';
 import { WorkflowSection } from '../../types/workflow.types';
 import { LoadingSpinner } from '../common/LoadingSpinner';
+import { stringToBytes } from 'node_modules/uuid/dist/esm-browser/v35';
 
 interface AutosaveWorkflowFormProps {
   workflowId: string;
@@ -30,7 +31,7 @@ export function AutosaveWorkflowForm({
 
       try {
         setSaving(true);
-        await saveProgress(workflowId, section.id, formData);
+        await saveProgress(section.id, formData);
         setLastSaved(new Date());
         onSave?.(formData);
       } catch (err) {
@@ -45,10 +46,10 @@ export function AutosaveWorkflowForm({
   }, [formData, workflowId, section.id, saveProgress, onSave, onError]);
 
   const handleChange = (fieldId: string, value: any) => {
-    setFormData(prev => ({
+    setFormData(prev: Record<string, any>) => ({
       ...prev,
       [fieldId]: value
-    }));
+    });
   };
 
   const renderField = (field: any) => {
