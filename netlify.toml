@@ -22,16 +22,12 @@
 framework = "vite"
 targetPort = 5173
 
-[[
-redirects
-]]
+[[redirects]]
   from = "/assets/*"
   to = "/assets/:splat"
   status = 200
 
-[[
-redirects
-]]
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
