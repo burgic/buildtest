@@ -1,6 +1,5 @@
 import { useWorkflow } from '../context/WorkflowContext';
 import { ClientPortal as ClientPortalComponent } from '../components/client/ClientPortal';
-import type { WorkflowSection } from '../../types/workflow.types';
 
 export default function ClientPortal() {
   const { currentWorkflow, saveProgress } = useWorkflow();

@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import type { WorkflowSection, FormField } from '../../types/workflow.types';
+import { useState, ChangeEvent } from 'react';
+import type { WorkflowSection } from '../../types/workflow.types';
 import FormSection from '../forms/FormSection';
 
 export interface ClientPortalProps {
   sections: WorkflowSection[];
   onSave: (sectionId: string, data: any) => Promise<void>;
 }
+
 
 export function ClientPortal({ sections, onSave }: ClientPortalProps) {
   const [activeSection, setActiveSection] = useState<string>(sections[0]?.id || '');
