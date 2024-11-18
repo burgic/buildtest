@@ -1,5 +1,5 @@
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthProvider';
 import { WorkflowProvider } from './context/WorkflowContext';
 import { AppLayout } from './components/AppLayout';
@@ -16,7 +16,7 @@ import AuthCallback from './pages/auth/callback';
 function App() {
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <HashRouter>
         <AuthProvider>
           <WorkflowProvider>
             
@@ -57,7 +57,7 @@ function App() {
           
           </WorkflowProvider>
         </AuthProvider>
-      </BrowserRouter>
+      </HashRouter>
     </ErrorBoundary>
   );
 }
