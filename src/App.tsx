@@ -11,7 +11,7 @@ import Register from './pages/auth/register';
 import './index.css';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import AuthCallback from './pages/auth/callback';
-// import Dashboard from './pages/Dashboard';
+import Dashboard from './pages/Dashboard';
 
 function App() {
   return (
@@ -41,17 +41,21 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
-                  <Route path="*" element={<Navigate to="/auth/login" replace />} />
+                  
                 
                 
                 <Route
-                  path="/"
+                  path="/dashboard"
                   element={
                     <ProtectedRoute>
                       <Navigate to="/dashboard" replace />
+                      <Dashboard />
                     </ProtectedRoute>
                   }
                 />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                
+                <Route path="*" element={<Navigate to="/auth/login" replace />} />
               </Routes>
               </AppLayout>
           

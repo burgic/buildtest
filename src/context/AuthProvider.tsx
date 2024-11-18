@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, AuthError } from '@supabase/supabase-js';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 interface AuthState {
@@ -22,6 +22,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [state, setState] = useState<AuthState>({
     user: null,
     loading: true,
@@ -47,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user: data.session?.user ?? null,
         loading: false,
       }));
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       setState(prev => ({
         ...prev,
@@ -105,7 +108,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading: false,
       }));
       
-      navigate('/auth/login');
+      navigate('/auth/login', {
+        state: { from: { pathname: location.pathname, search: location.search } },
+        replace: true,
+      });
     } catch (error) {
       setState(prev => ({
         ...prev,
@@ -215,7 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     initializeAuth();
-  }, [navigate]);
+  }, []);
 
   const value = {
     ...state,

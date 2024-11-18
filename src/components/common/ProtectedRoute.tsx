@@ -1,6 +1,6 @@
 // src/components/common/ProtectedRoute.tsx
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthProvider';
 
 interface ProtectedRouteProps {
@@ -10,6 +10,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const auth = useAuth();
+  const location = useLocation();
 
   console.log('Protected route auth check:')
 
@@ -23,7 +24,11 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
   if (!auth.user) {
     // Redirect to login but remember where they were trying to go
-    return <Navigate to="/auth/login" state={{ from: location }} replace />;
+    return <Navigate
+    to="/auth/login"
+    state={{ from: { pathname: location.pathname, search: location.search } }}
+    replace
+  />;
   }
 
   // Add role checking if required
