@@ -7,14 +7,10 @@
   NPM_VERSION = "10.8.2"
   NPM_FLAGS = "--legacy-peer-deps"
 
-[
-context.production
-]
+[context.production]
   environment = { NODE_ENV = "production" }
 
-[
-context.deploy-preview
-]
+[context.deploy-preview]
   environment = { NODE_ENV = "production" }
 
 [[redirects]]
