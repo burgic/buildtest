@@ -10,7 +10,14 @@
     },
     "dependencies": {
         "react": "^18.2.0",
-        "react-dom": "^18.2.0"
+        "react-dom": "^18.2.0",
+        "@supabase/supabase-js": "^2.46.1",
+        "@types/lodash": "^4.17.13",
+        "@types/uuid": "^10.0.0",
+        "lodash": "4.17.13",
+        "lucide-react": "^0.344.0",
+        "react-router-dom": "^6.28.0",
+        "uuid": "^11.0.3"
     },
     "devDependencies": {
         "@types/react": "^18.2.43",
