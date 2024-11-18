@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, AuthError, Session  } from '@supabase/supabase-js';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { User, AuthError, Session } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom'; // Removed useLocation since it's not used
 import { supabase } from '../lib/supabase';
 
 interface AuthState {
@@ -23,7 +23,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  // const location = useLocation();
   
   const [state, setState] = useState<AuthState>({
     user: null,
