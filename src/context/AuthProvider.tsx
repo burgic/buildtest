@@ -63,14 +63,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string) => {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
-      
+      console.log('Starting signup process')
       const baseUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
+
+      const redirectTo = `${getSiteURL()}/auth/callback`;
+      console.log('Redirect URL:', redirectTo)
 
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${baseUrl}/auth/callback`,
+          emailRedirectTo: redirectTo,
           data: {
             role: 'client' // Default role
           }
@@ -78,6 +81,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) throw error;
+
+      console.log('Signup response:', data);
 
       setState(prev => ({
         ...prev,
@@ -113,6 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         replace: true,
       });
     } catch (error) {
+      console.error("Sign out error:", error)
       setState(prev => ({
         ...prev,
         error: error as AuthError,
