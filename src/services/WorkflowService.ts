@@ -1,15 +1,14 @@
 // src/services/WorkflowService.ts
 import { supabase } from '../lib/supabase';
-import { Workflow } from '../types/workflow.types';
-import { Tables } from '../lib/database.types';
-import { v4 as uuidv4 } from 'uuid';
+import { WorkflowSection } from '../types/workflow.types';
+
 
 interface Workflow {
   id: string;
   title: string;
   advisor_id: string;
   status: 'draft' | 'active' | 'completed' | 'archived';
-  sections: any[];
+  sections: WorkflowSection[];
   created_at?: string;
   updated_at?: string;
 }

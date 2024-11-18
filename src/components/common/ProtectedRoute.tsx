@@ -1,6 +1,6 @@
 // src/components/common/ProtectedRoute.tsx
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthProvider';
 
 interface ProtectedRouteProps {
@@ -9,8 +9,6 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const location = useLocation();
-  const { user, loading } = useAuth();
   const auth = useAuth();
 
   console.log('Protected route auth check:')
