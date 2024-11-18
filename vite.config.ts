@@ -3,23 +3,28 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
-  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '');
   
   return {
     plugins: [react()],
-    base: './',
+    base: '/', // Changed from './' to '/'
     build: {
-    outDir: 'dist',
-    sourcemap: true
-  },
+      outDir: 'dist',
+      sourcemap: true,
+      assetsDir: 'assets', // Specify assets directory
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom'],
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
       },
     },
-    // Vite config
     define: {
       __SUPABASE_URL__: JSON.stringify(env.VITE_SUPABASE_URL),
       __SUPABASE_ANON_KEY__: JSON.stringify(env.VITE_SUPABASE_ANON_KEY),
@@ -28,7 +33,7 @@ export default defineConfig(({ mode }) => {
       watch: {
         usePolling: true,
       },
-      host: true, // needed for the Docker Container port mapping to work
+      host: true,
       strictPort: true,
       port: 5173,
     }
