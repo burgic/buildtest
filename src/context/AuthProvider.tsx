@@ -61,11 +61,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
       
+      const baseUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${baseUrl}/auth/callback`,
           data: {
             role: 'client' // Default role
           }
