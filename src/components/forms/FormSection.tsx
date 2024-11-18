@@ -1,6 +1,7 @@
-import React from 'react';
+// src/components/common/forms/FormSection.tsx
+import { ChangeEvent } from 'react';
 
-interface FormSectionProps {
+export interface FormSectionProps {
   label: string;
   name: string;
   type?: 'text' | 'email' | 'tel' | 'number' | 'select' | 'date';
@@ -14,7 +15,7 @@ interface FormSectionProps {
     pattern?: string;
     message?: string;
   };
-  onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onChange?: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
 }
 
 const FormSection: React.FC<FormSectionProps> = ({
@@ -28,15 +29,15 @@ const FormSection: React.FC<FormSectionProps> = ({
   validation,
   onChange
 }) => {
-  const renderInput = () => {
-    const baseClassName = "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm";
+  const baseClassName = "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm";
 
+  const renderInput = () => {
     if (type === 'select' && options) {
       return (
         <select
           id={name}
           name={name}
-          value={value}
+          value={value?.toString() || ''}
           onChange={onChange}
           className={baseClassName}
           required={required}
@@ -56,7 +57,7 @@ const FormSection: React.FC<FormSectionProps> = ({
         type={type}
         id={name}
         name={name}
-        value={value}
+        value={value?.toString() || ''}
         onChange={onChange}
         placeholder={placeholder}
         className={baseClassName}

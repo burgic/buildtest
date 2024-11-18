@@ -1,54 +1,40 @@
-import { useState } from 'react';
-import { Upload } from 'lucide-react';
-import type { WorkflowSection } from '../../types';
-import { AutosaveForm } from '../forms/AutosaveForm';
+// src/pages/ClientPortal.tsx
+import { useState, ChangeEvent } from 'react';
 import FormSection from '../components/common/forms/FormSection';
+import type { WorkflowSection } from '../types';
 
-export interface ClientPortalProps {
-  workflowId: string;
+interface ClientPortalProps {
   sections: WorkflowSection[];
   onSave: (sectionId: string, data: any) => Promise<void>;
 }
 
 export function ClientPortal({ sections, onSave }: ClientPortalProps) {
-  const [activeSection, setActiveSection] = useState<string>(
-    sections[0]?.id || ''
-  );
-  const [error, setError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<string>(sections[0]?.id || '');
+  const [formData, setFormData] = useState<Record<string, any>>({});
 
-  const handleSave = async (sectionId: string, data: any) => {
-    try {
-      setError(null);
-      await onSave(sectionId, data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save progress');
-      throw err;
-    }
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    const processedValue = type === 'number' ? (value ? Number(value) : '') : value;
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: processedValue
+    }));
   };
-
-  if (!sections.length) {
-    return (
-      <div className="text-center py-8 text-gray-500">
-        No sections available
-      </div>
-    );
-  }
 
   const currentSection = sections.find(s => s.id === activeSection) || sections[0];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">
-          Financial Information Form
-        </h2>
+    <div className="max-w-4xl mx-auto p-6">
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-2xl font-bold mb-6">Client Information</h2>
 
-        <div className="flex space-x-4 mb-8 overflow-x-auto pb-2">
-          {sections.map((section) => (
+        <div className="flex space-x-4 mb-8">
+          {sections.map(section => (
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`px-4 py-2 rounded-lg ${
                 activeSection === section.id
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -59,40 +45,36 @@ export function ClientPortal({ sections, onSave }: ClientPortalProps) {
           ))}
         </div>
 
-        <AutosaveForm
-          sectionId={currentSection.id}
-          initialData={currentSection.data}
-          onSave={(data) => handleSave(currentSection.id, data)}
+        <form 
+          className="space-y-6"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            await onSave(currentSection.id, formData);
+          }}
         >
-          <div className="grid grid-cols-2 gap-6">
-            {currentSection.fields.map((field) => (
-              <FormSection
-                key={field.id}
-                label={field.label}
-                name={field.id}
-                type={field.type}
-                required={field.required}
-                options={field.options}
-                validation={field.validation}
-              />
-            ))}
-          </div>
-        </AutosaveForm>
+          {currentSection.fields.map(field => (
+            <FormSection
+              key={field.id}
+              name={field.id}
+              label={field.label}
+              type={field.type as 'text' | 'email' | 'tel' | 'number' | 'select' | 'date'}
+              value={formData[field.id]}
+              onChange={handleInputChange}
+              required={field.required}
+              options={field.options}
+              validation={field.validation}
+            />
+          ))}
 
-        {error && (
-          <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-lg">
-            {error}
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Save Progress
+            </button>
           </div>
-        )}
-
-        <div className="mt-6 border-t pt-6">
-          <button 
-            className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-          >
-            <Upload className="w-4 h-4" />
-            <span>Upload Supporting Documents</span>
-          </button>
-        </div>
+        </form>
       </div>
     </div>
   );

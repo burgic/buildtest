@@ -27,7 +27,7 @@ export interface WorkflowSection {
 export interface FormField {
   id: string;
   label: string;
-  type: 'text' | 'number' | 'date' | 'select' | 'file';
+  type: 'text' | 'email' | 'tel' | 'number' | 'select' | 'date';
   required: boolean;
   options?: string[];
   validation?: {
