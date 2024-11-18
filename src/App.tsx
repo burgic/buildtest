@@ -5,7 +5,7 @@ import { WorkflowProvider } from './context/WorkflowContext';
 import { AppLayout } from './components/AppLayout';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import AdvisorDashboard from './pages/AdvisorDashboard';
-import { ClientPortal } from './pages/ClientPortal';
+import ClientPortal from './pages/ClientPortal';
 import Login from './pages/auth/login';
 import Register from './pages/auth/register';
 import './index.css';

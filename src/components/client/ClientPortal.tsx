@@ -1,9 +1,8 @@
-// src/pages/ClientPortal.tsx
-import { useState, ChangeEvent } from 'react';
-import FormSection from '../components/common/forms/FormSection';
-import type { WorkflowSection } from '../types';
+import { useState } from 'react';
+import type { WorkflowSection, FormField } from '../../types/workflow.types';
+import FormSection from '../forms/FormSection';
 
-interface ClientPortalProps {
+export interface ClientPortalProps {
   sections: WorkflowSection[];
   onSave: (sectionId: string, data: any) => Promise<void>;
 }
