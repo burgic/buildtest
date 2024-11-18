@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Save } from 'lucide-react';
-import FormSection from '../components/FormSection';
+import FormSection from '../components/forms/FormSection';
 import { useWorkflow } from '../context/WorkflowContext';
 
 const ClientPortal: React.FC = () => {

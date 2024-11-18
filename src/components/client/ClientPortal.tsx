@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Upload } from 'lucide-react';
 import type { WorkflowSection } from '../../types';
 import { AutosaveForm } from '../forms/AutosaveForm';
-import FormSection from '../common/FormSection';
+import FormSection from '../components/common/forms/FormSection';
 
 export interface ClientPortalProps {
   workflowId: string;
@@ -10,7 +10,7 @@ export interface ClientPortalProps {
   onSave: (sectionId: string, data: any) => Promise<void>;
 }
 
-export function ClientPortal({ workflowId, sections, onSave }: ClientPortalProps) {
+export function ClientPortal({ sections, onSave }: ClientPortalProps) {
   const [activeSection, setActiveSection] = useState<string>(
     sections[0]?.id || ''
   );
