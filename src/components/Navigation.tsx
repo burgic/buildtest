@@ -1,8 +1,22 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Briefcase, Users, FileText } from 'lucide-react';
+import { Briefcase, Users, FileText, LogOut } from 'lucide-react';
+import { useAuth } from "../context/AuthProvider"
 
 const Navigation: React.FC = () => {
+
+  const { signOut, user } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      // Redirect will be handled by AuthProvider
+    } catch (error) {
+      console.error('Error signing out:', error);
+      alert('Error signing out. Please try again.');
+    }
+  };
+
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
       isActive
@@ -31,7 +45,23 @@ const Navigation: React.FC = () => {
               </NavLink>
             </div>
           </div>
-        </div>
+          <div className="flex items-center space-x-4">
+            {user && (
+              <>
+                <span className="text-sm text-gray-600">
+                  {user.email}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Sign Out</span>
+                </button>
+              </>
+            )}
+          </div>
+          </div>
       </div>
     </nav>
   );

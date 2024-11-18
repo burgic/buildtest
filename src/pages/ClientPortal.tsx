@@ -6,33 +6,48 @@ import { useWorkflow } from '../context/WorkflowContext';
 const ClientPortal: React.FC = () => {
   const { currentWorkflow, saveProgress } = useWorkflow();
   const [activeSection, setActiveSection] = useState('personal');
+  const [formData, setFormData] = useState<{ [key: string]: any }>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  
-  const sections = [
-    { id: 'personal', title: 'Personal Details' },
-    { id: 'employment', title: 'Employment & Income' },
-    { id: 'expenses', title: 'Monthly Expenses' },
-    { id: 'assets', title: 'Assets & Liabilities' },
-    { id: 'goals', title: 'Financial Goals' }
-  ];
 
-
-  const handleSectionChange = (sectionId: string) => {
-    setActiveSection(sectionId);
-  };
+  // Load existing data when section changes
+  useEffect(() => {
+    if (currentWorkflow?.sections) {
+      const section = currentWorkflow.sections.find((s: any) => s.id === activeSection);
+      if (section?.data) {
+        console.log('Loading existing section data:', section.data);
+        setFormData(section.data);
+      } else {
+        setFormData({});
+      }
+    }
+  }, [activeSection, currentWorkflow]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type } = e.target;
+    const newValue = type === 'number' ? (value ? parseFloat(value) : '') : value;
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: newValue
+    }));
 
+    console.log('Form data updated:', {
+      field: name,
+      value: newValue,
+      allData: {
+        ...formData,
+        [name]: newValue
+      }
+    });
   };
 
-  const handleSave = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    
+  const handleSave = async () => {
+    console.log('Save initiated for section:', activeSection);
+    console.log('Data to save:', formData);
 
-    if (!currentWorkflow?.id) {
-      console.error('No active workflow found');
-      setSaveError('No active workflow available');
+    if (!Object.keys(formData).length) {
+      console.log('No data to save');
       return;
     }
 
@@ -40,20 +55,13 @@ const ClientPortal: React.FC = () => {
       setSaving(true);
       setSaveError(null);
 
-      const formElement = document.querySelector(`#${activeSection}-form`) as HTMLFormElement;
-      if (!formElement) {
-        throw new Error('Form element not found');
-      }
-
-      const formData = new FormData(formElement);
-      const data = Object.fromEntries(formData.entries());
-    
-
-      await saveProgress(activeSection, data);
+      await saveProgress(activeSection, formData);
+      console.log('Save successful');
       
       // Show success message
       alert('Progress saved successfully!');
     } catch (error) {
+      console.error('Error saving form:', error);
       setSaveError(error instanceof Error ? error.message : 'Failed to save progress');
       alert('Failed to save progress. Please try again.');
     } finally {
@@ -61,87 +69,53 @@ const ClientPortal: React.FC = () => {
     }
   };
 
-  // Render functions remain the same...
+  const renderFormField = (label: string, name: string, type: string = 'text', placeholder: string = '') => (
+    <FormSection
+      label={label}
+      name={name}
+      type={type}
+      placeholder={placeholder}
+      value={formData[name] || ''}
+      onChange={handleInputChange}
+    />
+  );
+
   const renderPersonalDetails = () => (
     <form id="personal-form" className="grid grid-cols-2 gap-6">
-      <FormSection 
-        label="Full Name" 
-        name="fullName"
-        placeholder="John Doe" 
-        onChange={handleInputChange}
-      />
-      <FormSection 
-        label="Email" 
-        name="email"
-        type="email" 
-        placeholder="john@example.com" 
-        onChange={handleInputChange}
-      />
-      <FormSection 
-        label="Phone" 
-        name="phone"
-        type="tel" 
-        placeholder="+1 (555) 000-0000" 
-        onChange={handleInputChange}
-      />
-      <FormSection 
-        label="Address" 
-        name="address"
-        placeholder="123 Main St" 
-        onChange={handleInputChange}
-      />
+      {renderFormField('Full Name', 'fullName', 'text', 'John Doe')}
+      {renderFormField('Email', 'email', 'email', 'john@example.com')}
+      {renderFormField('Phone', 'phone', 'tel', '+1 (555) 000-0000')}
+      {renderFormField('Address', 'address', 'text', '123 Main St')}
     </form>
   );
 
   const renderEmployment = () => (
     <form id="employment-form" className="space-y-6">
       <div className="grid grid-cols-2 gap-6">
-        <FormSection 
-          label="Employer" 
-          name="employer"
-          placeholder="Company Name" 
-          onChange={handleInputChange}
-        />
-        <FormSection 
-          label="Position" 
-          name="position"
-          placeholder="Job Title" 
-          onChange={handleInputChange}
-        />
-        <FormSection 
-          label="Annual Income" 
-          name="annualIncome"
-          type="number" 
-          placeholder="75000" 
-          onChange={handleInputChange}
-        />
-        <FormSection 
-          label="Years Employed" 
-          name="yearsEmployed"
-          type="number" 
-          placeholder="5" 
-          onChange={handleInputChange}
-        />
+        {renderFormField('Employer', 'employer', 'text', 'Company Name')}
+        {renderFormField('Position', 'position', 'text', 'Job Title')}
+        {renderFormField('Annual Income', 'annualIncome', 'number', '75000')}
+        {renderFormField('Years Employed', 'yearsEmployed', 'number', '5')}
       </div>
     </form>
   );
 
   const renderExpenses = () => (
     <form id="expenses-form" className="grid grid-cols-2 gap-6">
-      <FormSection label="Housing" name="housing" type="number" placeholder="2000" onChange={handleInputChange} />
-      <FormSection label="Utilities" name="utilities" type="number" placeholder="200" onChange={handleInputChange} />
-      <FormSection label="Transportation" name="transportation" type="number" placeholder="400" onChange={handleInputChange} />
-      <FormSection label="Insurance" name="insurance" type="number" placeholder="300" onChange={handleInputChange} />
+      {renderFormField('Housing', 'housing', 'number', '2000')}
+      {renderFormField('Utilities', 'utilities', 'number', '200')}
+      {renderFormField('Transportation', 'transportation', 'number', '400')}
+      {renderFormField('Insurance', 'insurance', 'number', '300')}
     </form>
   );
 
   const renderAssets = () => (
     <form id="assets-form" className="space-y-6">
       <div className="grid grid-cols-2 gap-6">
-        <FormSection label="Cash & Savings" name="cashSavings" type="number" placeholder="50000" onChange={handleInputChange} />
-        <FormSection label="Investments" name="investments" type="number" placeholder="100000" onChange={handleInputChange} />
-        <FormSection label="Property Value" name="propertyValue" type="number" placeholder="500000" onChange={handleInputChange} />
-        <FormSection label="Vehicle Value" name="vehicleValue" type="number" placeholder="25000" onChange={handleInputChange} />
+        {renderFormField('Cash & Savings', 'cashSavings', 'number', '50000')}
+        {renderFormField('Investments', 'investments', 'number', '100000')}
+        {renderFormField('Property Value', 'propertyValue', 'number', '500000')}
+        {renderFormField('Vehicle Value', 'vehicleValue', 'number', '25000')}
       </div>
     </form>
   );
@@ -149,10 +123,10 @@ const ClientPortal: React.FC = () => {
   const renderGoals = () => (
     <form id="goals-form" className="space-y-6">
       <div className="grid grid-cols-2 gap-6">
-        <FormSection label="Target Retirement Age" name="retirementAge" type="number" placeholder="65" onChange={handleInputChange} />
-        <FormSection label="Monthly Income Goal" name="monthlyIncomeGoal" type="number" placeholder="5000" onChange={handleInputChange} />
-        <FormSection label="Goal Description" name="goalDescription" placeholder="Buy a vacation home" onChange={handleInputChange} />
-        <FormSection label="Target Amount" name="targetAmount" type="number" placeholder="300000" onChange={handleInputChange} />
+        {renderFormField('Target Retirement Age', 'retirementAge', 'number', '65')}
+        {renderFormField('Monthly Income Goal', 'monthlyIncomeGoal', 'number', '5000')}
+        {renderFormField('Goal Description', 'goalDescription', 'text', 'Buy a vacation home')}
+        {renderFormField('Target Amount', 'targetAmount', 'number', '300000')}
       </div>
     </form>
   );
@@ -174,27 +148,16 @@ const ClientPortal: React.FC = () => {
     }
   };
 
-  if (!currentWorkflow) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center text-gray-600">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-4"></div>
-          <p>Loading workflow...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">Financial Information Form</h2>
         
         <div className="flex space-x-4 mb-8 overflow-x-auto pb-2">
-          {sections.map((section) => (
+          {currentWorkflow?.sections?.map((section: any) => (
             <button
               key={section.id}
-              onClick={() => handleSectionChange(section.id)}
+              onClick={() => setActiveSection(section.id)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 activeSection === section.id
                   ? 'bg-blue-600 text-white'

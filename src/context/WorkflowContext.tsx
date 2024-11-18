@@ -108,45 +108,93 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const saveProgress = async (sectionId: string, data: any) => {
-
+    console.log('Starting save progress:', { sectionId, data });
+  
     if (!currentWorkflow?.id) {
+      console.error('No active workflow found during save attempt');
       throw new Error('No active workflow');
     }
-
+  
     try {
-      // First, check if we're still authenticated
+      // Check authentication
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('No active session');
       }
-
-      // Save to form_responses table
-      const { data: response, error } = await supabase
+  
+      // First, get existing data for this section
+      const { data: existingResponses, error: fetchError } = await supabase
+        .from('form_responses')
+        .select('*')
+        .eq('workflow_id', currentWorkflow.id)
+        .eq('section_id', sectionId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+  
+      if (fetchError) {
+        console.error('Error fetching existing responses:', fetchError);
+        throw fetchError;
+      }
+  
+      // Check if we have existing data
+      const existingData = existingResponses?.[0]?.data || {};
+      
+      if (Object.keys(existingData).length > 0) {
+        console.log('Found existing data:', existingData);
+      } else {
+        console.log('No existing data found, creating new response');
+      }
+  
+      // Merge data (or use just new data if no existing data)
+      const mergedData = {
+        ...existingData,
+        ...data // Use the data parameter passed to the function
+      };
+  
+      console.log('Data to save:', {
+        existingData,
+        newData: data, // Log the incoming data
+        mergedData,
+        isNewResponse: Object.keys(existingData).length === 0
+      });
+  
+      // Save merged data
+      const { data: response, error: saveError } = await supabase
         .from('form_responses')
         .insert({
           workflow_id: currentWorkflow.id,
           section_id: sectionId,
-          data: data
+          data: mergedData
         })
         .select()
         .single();
-
-      if (error) {
-        throw error;
+  
+      if (saveError) {
+        console.error('Error saving form response:', saveError);
+        throw saveError;
       }
-
-      // Update local state
+  
+      console.log('Save successful:', response);
+  
+      // Update local state while preserving any existing data
       setCurrentWorkflow(prev => ({
         ...prev,
         sections: prev.sections.map(section =>
           section.id === sectionId
-            ? { ...section, data }
+            ? {
+                ...section,
+                data: {
+                  ...(section.data || {}),
+                  ...data // Use the data parameter here too
+                }
+              }
             : section
         )
       }));
-
+  
       return response;
     } catch (error) {
+      console.error('Error in saveProgress:', error);
       throw error;
     }
   };
