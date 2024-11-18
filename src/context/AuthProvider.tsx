@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
       console.log('Starting signup process')
-      const baseUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
+      const getSiteURL = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
 
       const redirectTo = `${getSiteURL()}/auth/callback`;
       console.log('Redirect URL:', redirectTo)
@@ -132,10 +132,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
       
-      const baseUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
+      const getSiteURL = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${baseUrl}/auth/reset-password`,
+        redirectTo: `${getSiteURL}/auth/reset-password`,
       });
       
       if (error) throw error;
