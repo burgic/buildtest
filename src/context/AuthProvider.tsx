@@ -36,17 +36,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data:authData, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) throw error;
 
+      console.log('Sign in sucessful:', authData);
+
       setState(prev => ({
         ...prev,
         session: data.session,
-        user: data.session?.user ?? null,
+        user: authData,
         loading: false,
       }));
       navigate('/dashboard', { replace: true });
@@ -69,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const redirectTo = `${getSiteURL()}/auth/callback`;
       console.log('Redirect URL:', redirectTo)
 
-      const { error } = await supabase.auth.signUp({
+      const { data: authData, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -80,9 +82,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Signup error:', error)
+        throw error;
+      }
+      console.log('Signup response:', authData);
 
-      console.log('Signup response:', data);
+      if (authData.user?.identities?.length === 0) {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          message: 'This email is already registered. Please sign in instead.',
+        }))
+      }
 
       setState(prev => ({
         ...prev,
