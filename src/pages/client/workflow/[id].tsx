@@ -30,12 +30,13 @@ const WorkflowPage: React.FC = () => {
         // Ensure sections have all required properties
         const processedWorkflow = {
           ...workflowData,
-          sections: workflowData.sections?.map(section => ({
+          sections: workflowData.sections?.map((section) => ({
             ...section,
-            fields: section.fields || [],
-            data: section.data || {}
-          })) || []
-        };
+            type: section.type || "personal", // Default type
+            required: section.required ?? true, // Ensure a boolean value
+            order: section.order ?? 0, // Default ordering
+        })) || [],
+      }
         
         setWorkflow(processedWorkflow as WorkflowData);
       } catch (err) {
@@ -45,6 +46,7 @@ const WorkflowPage: React.FC = () => {
         setLoading(false);
       }
     }
+    
 
     loadWorkflow();
   }, [id]);

@@ -203,25 +203,26 @@ export class WorkflowService {
       .subscribe();
   }
 
+  
   // Workflow validation
   static validateWorkflowData(workflow: Workflow): boolean {
-    // Add any validation logic you need
     if (!workflow.sections || !Array.isArray(workflow.sections)) {
-      return false;
+        return false;
     }
 
     for (const section of workflow.sections) {
-      if (!section.id || !section.title || !Array.isArray(section.fields)) {
-        return false;
-      }
-
-      for (const field of section.fields) {
-        if (!field.id || !field.label || !field.type) {
-          return false;
+        if (!section.id || !section.title || !Array.isArray(section.fields)) {
+            return false;
         }
-      }
+
+        for (const field of section.fields) {
+            if (!field.id || !field.label || !field.type || !['text', 'number', 'email', 'tel', 'select', 'date', 'file'].includes(field.type)) {
+                return false;
+            }
+        }
     }
 
     return true;
-  }
+}
+    
 }

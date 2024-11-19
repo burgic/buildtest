@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { WorkflowSection } from '../../types/workflow.types';
+import type { WorkflowSection, FieldType } from '../../types/workflow.types';
 import FormSection from '../forms/FormSection';
 import { Upload } from 'lucide-react';
 import { AutosaveForm } from '../forms/AutosaveForm';
@@ -74,7 +74,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ sections = [], onSave }) =>
                   key={field.id}
                   label={field.label}
                   name={field.id}
-                  type={field.type}
+                  type={field.type as FieldType}
                   required={field.required}
                   options={field.options}
                   validation={field.validation}

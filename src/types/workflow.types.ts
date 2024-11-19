@@ -1,7 +1,7 @@
 // src/types/workflow.types.ts
 
 export type WorkflowStatus = 'draft' | 'active' | 'completed' | 'archived';
-export type FieldType = 'text' | 'number' | 'email' | 'tel' | 'select' | 'date' | 'file';
+export type FieldType = 'text' | 'number' | 'email' | 'tel' | 'select' | 'date' | 'file' | 'custom'; // Add more as needed
 
 export interface FormField {
   id: string;
