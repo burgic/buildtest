@@ -1,43 +1,12 @@
 // src/types/workflow.types.ts
 
-export interface WorkflowContextType {
-  currentWorkflow: {
-    id: string;
-    title: string;
-    advisor_id: string;
-    status: 'draft' | 'active' | 'completed' | 'archived';
-    sections: WorkflowSection[];
-  } | null;
-  setCurrentWorkflow: (workflow: any) => void;
-  saveProgress: (sectionId: string, data: Record<string, any>) => Promise<any>;
-  loading: boolean;
-  error: Error | null;
-}
-
-export interface WorkflowSection {
-  id: string;
-  title: string;
-  fields: Array<{
-    id: string;
-    label: string;
-    type: string;
-    required: boolean;
-    options?: string[];
-    validation?: {
-      min?: number;
-      max?: number;
-      pattern?: string;
-      message?: string;
-    };
-  }>;
-  data?: any;
-}
-
+export type WorkflowStatus = 'draft' | 'active' | 'completed' | 'archived';
+export type FieldType = 'text' | 'number' | 'email' | 'tel' | 'select' | 'date' | 'file';
 
 export interface FormField {
   id: string;
   label: string;
-  type: 'text' | 'email' | 'tel' | 'number' | 'select' | 'date';
+  type: FieldType;
   required: boolean;
   options?: string[];
   validation?: {
@@ -48,11 +17,40 @@ export interface FormField {
   };
 }
 
-export interface WorkflowResponse {
+export interface WorkflowSection {
+  id: string;
+  title: string;
+  type: 'personal' | 'financial' | 'documents' | 'goals';
+  fields: FormField[];
+  required: boolean;
+  order: number;
+  data?: Record<string, any>;
+}
+
+export interface Workflow {
+  id: string;
+  title: string;
+  advisor_id: string;
+  sections: WorkflowSection[];
+  status: WorkflowStatus;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FormResponse {
   id: string;
   workflow_id: string;
   section_id: string;
-  data: any;
+  data: Record<string, any>;
   created_at: string;
   updated_at: string;
+}
+
+export interface WorkflowLink {
+  id: string;
+  workflow_id: string;
+  client_email: string;
+  status: 'pending' | 'active' | 'completed';
+  expires_at: string;
+  created_at: string;
 }

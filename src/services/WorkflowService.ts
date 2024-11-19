@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
-import type { Database } from '../lib/database.types';
-import type { WorkflowSection } from '../types/workflow.types';
+
+import type { WorkflowSection, Workflow, FormResponse } from '../types/workflow.types';
+
 
 // Type definitions
 export interface Workflow {
@@ -23,7 +24,6 @@ export interface FormResponse {
 }
 
 export class WorkflowService {
-  // Workflow CRUD operations
   static async createWorkflow(advisorId: string, title: string): Promise<Workflow> {
     const { data, error } = await supabase
       .from('workflows')
