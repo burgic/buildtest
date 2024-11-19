@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-import type { WorkflowSection, Workflow, FormResponse } from '../types/workflow.types';
+import type { WorkflowSection } from '../types/workflow.types';
 
 
 // Type definitions

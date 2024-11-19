@@ -4,7 +4,7 @@ import { ChangeEvent } from 'react';
 export interface FormSectionProps {
   label: string;
   name: string;
-  type?: 'text' | 'email' | 'tel' | 'number' | 'select' | 'date';
+  type?: 'text' | 'email' | 'tel' | 'number' | 'select' | 'date' | 'file';
   placeholder?: string;
   value?: string | number;
   required?: boolean;
