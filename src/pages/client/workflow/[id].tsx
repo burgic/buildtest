@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ClientPortal from '../../../components/client/ClientPortal';
 import { WorkflowService } from '../../../services/WorkflowService';
-import type { WorkflowSection, Workflow } from '../../../types';
+import type { WorkflowSection, Workflow } from '/Users/christianburgin/Projects/Take II/Proto/project/src/types/workflow.types.ts';
 
 interface WorkflowData extends Omit<Workflow, 'sections'> {
   sections: WorkflowSection[];
