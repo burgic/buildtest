@@ -17,12 +17,22 @@ export interface WorkflowContextType {
 export interface WorkflowSection {
   id: string;
   title: string;
-  type: 'personal' | 'financial' | 'documents' | 'goals';
-  fields: FormField[];
-  required: boolean;
-  order: number;
+  fields: Array<{
+    id: string;
+    label: string;
+    type: string;
+    required: boolean;
+    options?: string[];
+    validation?: {
+      min?: number;
+      max?: number;
+      pattern?: string;
+      message?: string;
+    };
+  }>;
   data?: any;
 }
+
 
 export interface FormField {
   id: string;

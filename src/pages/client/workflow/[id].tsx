@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ClientPortal } from '../../../components/client/ClientPortal';
+import ClientPortal from '../../../components/client/ClientPortal';
 import { WorkflowService } from '../../../services/WorkflowService';
 import type { WorkflowSection } from '../../../types';
 
@@ -11,7 +11,7 @@ interface WorkflowData {
   status: string;
 }
 
-export default function WorkflowPage() {
+const WorkflowPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [workflow, setWorkflow] = useState<WorkflowData | null>(null);
@@ -30,12 +30,13 @@ export default function WorkflowPage() {
         setLoading(true);
         const workflowData = await WorkflowService.getWorkflow(id);
         
-        // Ensure sections exist and have required properties
+        // Ensure sections have all required properties
         const processedWorkflow = {
           ...workflowData,
           sections: workflowData.sections?.map(section => ({
             ...section,
-            fields: section.fields || []
+            fields: section.fields || [],
+            data: section.data || {}
           })) || []
         };
         
@@ -51,11 +52,27 @@ export default function WorkflowPage() {
     loadWorkflow();
   }, [id]);
 
+
   const handleSave = async (sectionId: string, data: any) => {
-    if (!workflow?.id) return;
+    if (!workflow?.id) {
+      console.error('No workflow ID available');
+      return;
     
+    }
     try {
       await WorkflowService.saveFormResponse(workflow.id, sectionId, data);
+      // Optionally update local state
+      setWorkflow(prevWorkflow => {
+        if (!prevWorkflow) return null;
+        return {
+          ...prevWorkflow,
+          sections: prevWorkflow.sections.map(section =>
+            section.id === sectionId
+              ? { ...section, data: { ...(section.data || {}), ...data } }
+              : section
+          )
+        };
+      });
     } catch (err) {
       console.error('Error saving form:', err);
       throw err;
@@ -125,3 +142,5 @@ export default function WorkflowPage() {
     </div>
   );
 }
+
+export default WorkflowPage

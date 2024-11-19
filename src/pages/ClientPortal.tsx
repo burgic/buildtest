@@ -1,24 +1,54 @@
 import { useWorkflow } from '../context/WorkflowContext';
-import { ClientPortal as ClientPortalComponent } from '../components/client/ClientPortal';
+import ClientPortal from '../components/client/ClientPortal';
 
-export default function ClientPortal() {
-  const { currentWorkflow, saveProgress } = useWorkflow();
+const ClientPortalPage: React.FC = () => {
+  const { currentWorkflow, saveProgress, loading, error } = useWorkflow();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 text-red-700 rounded-lg">
+        Error: {error.message}
+      </div>
+    );
+  }
 
   if (!currentWorkflow) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-gray-500">Loading workflow...</div>
+      <div className="p-4 bg-yellow-50 text-yellow-700 rounded-lg">
+        No active workflow found.
       </div>
     );
   }
 
   return (
-    <ClientPortalComponent
-      sections={currentWorkflow.sections}
-      onSave={saveProgress}
-    />
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          <h1 className="text-2xl font-bold text-gray-900">{currentWorkflow.title}</h1>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <ClientPortal
+          sections={currentWorkflow.sections}
+          onSave={async (sectionId, data) => {
+            await saveProgress(sectionId, data);
+          }}
+        />
+      </main>
+    </div>
   );
-}
+};
+
+export default ClientPortalPage;
 /*
 
 import React, { useState } from 'react';

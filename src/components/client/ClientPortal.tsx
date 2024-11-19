@@ -1,4 +1,4 @@
-import { useState, ChangeEvent } from 'react';
+import React, { useState } from 'react';
 import type { WorkflowSection } from '../../types/workflow.types';
 import FormSection from '../forms/FormSection';
 import { Upload } from 'lucide-react';
@@ -6,18 +6,16 @@ import { AutosaveForm } from '../forms/AutosaveForm';
 
 
 interface ClientPortalProps {
-  workflowId: string;
-  sections?: WorkflowSection[];
+  sections: WorkflowSection[];
   onSave: (sectionId: string, data: any) => Promise<void>;
 }
 
-export function ClientPortal({ workflowId, sections = [], onSave }: ClientPortalProps) {
+const ClientPortal: React.FC<ClientPortalProps> = ({ sections = [], onSave }) => {
   const [activeSection, setActiveSection] = useState<string>(
     sections[0]?.id || ''
   );
   const [error, setError] = useState<string | null>(null);
 
-  // Handle loading state
   if (!sections || sections.length === 0) {
     return (
       <div className="max-w-4xl mx-auto">
@@ -104,3 +102,5 @@ export function ClientPortal({ workflowId, sections = [], onSave }: ClientPortal
     </div>
   );
 }
+
+export default ClientPortal;
