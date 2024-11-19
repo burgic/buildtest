@@ -1,5 +1,4 @@
 // src/services/WorkflowService.ts
-import { supabase } from '../lib/supabase';
 import { WorkflowSection } from '../types/workflow.types';
 
 
@@ -14,56 +13,33 @@ interface Workflow {
 }
 
 export class WorkflowService {
-  static async createWorkflow(advisorId: string, title: string): Promise<Workflow> {
+  static async getWorkflow(id: string): Promise<Workflow> {
     const { data, error } = await supabase
       .from('workflows')
-      .insert({
-        advisor_id: advisorId,
-        title: title,
-        status: 'draft',
-        sections: []
-      })
-      .select()
+      .select('*')
+      .eq('id', id)
       .single();
 
-    if (error) {
-      console.error('Error creating workflow:', error);
-      throw error;
-    }
-
+    if (error) throw error;
     return data;
   }
 
-  static async saveFormResponse(workflowId: string, sectionId: string, data: any) {
-    console.log('Saving form response:', {
-      workflow_id: workflowId,
-      section_id: sectionId,
-      data: data
-    });
+  static async saveFormResponse(
+    workflowId: string, 
+    sectionId: string, 
+    data: Record<string, any>
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('form_responses')
+      .insert({
+        workflow_id: workflowId,
+        section_id: sectionId,
+        data
+      });
 
-    try {
-      const { data: response, error } = await supabase
-        .from('form_responses')
-        .insert({
-          workflow_id: workflowId,
-          section_id: sectionId,
-          data: data
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error saving form response:', error);
-        throw error;
-      }
-
-      console.log('Successfully saved form response:', response);
-      return response;
-    } catch (error) {
-      console.error('Error in saveFormResponse:', error);
-      throw error;
-    }
+    if (error) throw error;
   }
+
 
   static async getFormResponses(workflowId: string) {
     const { data, error } = await supabase
