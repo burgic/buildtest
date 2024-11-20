@@ -172,19 +172,22 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
       if (saveError) throw saveError;
 
-      setCurrentWorkflow(prev => prev ? {
-        ...prev,
-        sections: prev.sections.map(section =>
-          section.id === sectionId
-            ? { ...section, data: { ...(section.data || {}), ...data } }
-            : section
-        )
-      } : null);
+      setCurrentWorkflow(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          sections: prev.sections.map(section =>
+            section.id === sectionId
+              ? { ...section, data }
+              : section
+          )
+        };
+      });
+  
+      console.log('Successfully saved progress:', { sectionId, data });
     } catch (err) {
-      console.error('Error in saveProgress:', error);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save progress';
-      setError(new Error(errorMessage));
-      throw error;
+      console.error('Error saving progress:', err);
+      throw err;
     }
   };
 

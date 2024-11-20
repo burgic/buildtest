@@ -2,16 +2,55 @@
 import { useState, useEffect } from 'react';
 import { useWorkflow } from '../context/WorkflowContext';
 
+
 export default function FinancialProfile() {
-  const { currentWorkflow, loading } = useWorkflow();
+  const { currentWorkflow, loading, saveProgress: saveWorkflowProgress } = useWorkflow();
   const [activeSection, setActiveSection] = useState<string>('');
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [saving, setSaving] = useState(false);
 
   // Set initial active section when workflow loads
   useEffect(() => {
     if (currentWorkflow?.sections && currentWorkflow.sections.length > 0) {
-      setActiveSection(currentWorkflow.sections[0].id);
+        const firstSection = currentWorkflow.sections[0]; // Define firstSection
+        setActiveSection(firstSection.id);
+        setFormData(firstSection.data || {});
     }
   }, [currentWorkflow]);
+
+    // Update form data when switching sections
+    useEffect(() => {
+        if (currentWorkflow?.sections) {
+          const section = currentWorkflow.sections.find(s => s.id === activeSection);
+          if (section) {
+            setFormData(section.data || {});
+          }
+        }
+      }, [activeSection, currentWorkflow]);
+    
+      // Handle input changes
+      const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value, type } = e.target;
+        const newValue = type === 'number' ? (value ? parseFloat(value) : '') : value;
+        
+        // Update local state
+        const newFormData = {
+          ...formData,
+          [name]: newValue
+        };
+        setFormData(newFormData);
+    
+        // Save to backend
+        try {
+          setSaving(true);
+          await saveWorkflowProgress(activeSection, newFormData);
+          console.log('Saved form data:', newFormData);
+        } catch (error) {
+          console.error('Error saving form data:', error);
+        } finally {
+          setSaving(false);
+        }
+      };
 
   // Debug logging
   console.log('Current Workflow:', currentWorkflow);
@@ -68,47 +107,37 @@ export default function FinancialProfile() {
         {/* Form Section */}
         {currentSection && (
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">{currentSection.title}</h2>
-            {!currentSection.fields ? (
-              <div className="text-red-500">No fields defined for this section</div>
-            ) : (
-              <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-                {currentSection.fields.map(field => {
-                  console.log('Rendering field:', field);
-                  return (
-                    <div key={field.id} className="space-y-1">
-                      <label 
-                        htmlFor={field.id}
-                        className="block text-sm font-medium text-gray-300"
-                      >
-                        {field.label}
-                        {field.required && (
-                          <span className="text-red-500 ml-1">*</span>
-                        )}
-                      </label>
-                      <input
-                        type={field.type}
-                        id={field.id}
-                        name={field.id}
-                        required={field.required}
-                        className="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  );
-                })}
-                
-                <div className="flex justify-end mt-6">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          <h2 className="text-xl font-semibold mb-4">{currentSection.title}</h2>
+          {!currentSection.fields ? (
+            <div className="text-red-500">No fields defined for this section</div>
+          ) : (
+            <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+              {currentSection.fields.map(field => (
+                <div key={field.id} className="space-y-1">
+                  <label 
+                    htmlFor={field.id}
+                    className="block text-sm font-medium text-gray-300"
                   >
-                    Save
-                  </button>
+                    {field.label}
+                    {field.required && (
+                      <span className="text-red-500 ml-1">*</span>
+                    )}
+                  </label>
+                  <input
+                    type={field.type}
+                    id={field.id}
+                    name={field.id}
+                    value={formData[field.id] || ''}
+                    onChange={handleInputChange}
+                    required={field.required}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
-              </form>
-            )}
-          </div>
-        )}
+              ))}
+            </form>
+          )}
+        </div>
+      )}
 
         {/* Debug Info */}
         <div className="mt-8 p-4 bg-gray-800 rounded">
@@ -118,7 +147,9 @@ export default function FinancialProfile() {
               workflowId: currentWorkflow?.id,
               sectionCount: currentWorkflow?.sections?.length,
               activeSection,
-              currentSection
+              currentSection,
+              formData, 
+              isSaving: saving
             }, null, 2)}
           </pre>
         </div>
