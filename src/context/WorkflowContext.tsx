@@ -30,18 +30,32 @@ const defaultSections: WorkflowSection[] = [
   {
     id: 'personal',
     title: 'Personal Details',
-    type: 'personal', // Add the 'type' field
-    required: true, // Add the 'required' field
-    order: 1, // Add the 'order' field
+    type: 'personal',
+    required: true,
+    order: 1,
     fields: [
       { id: 'fullName', label: 'Full Name', type: 'text', required: true },
       { id: 'email', label: 'Email', type: 'email', required: true },
-      // Add more fields as needed
+      { id: 'phone', label: 'Phone Number', type: 'tel', required: true },
+      { id: 'address', label: 'Address', type: 'text', required: false },
+      { id: 'dateOfBirth', label: 'Date of Birth', type: 'date', required: true },
     ],
-    data: {}, // Default empty data
+    data: {},
   },
-  // Add more sections following the same pattern
+  {
+    id: 'employment',
+    title: 'Employment Details',
+    type: 'financial',
+    required: true,
+    order: 2,
+    fields: [
+      { id: 'employer', label: 'Employer', type: 'text', required: true },
+      { id: 'annualIncome', label: 'Annual Income', type: 'number', required: true },
+    ],
+    data: {},
+  },
 ];
+
 
 export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
