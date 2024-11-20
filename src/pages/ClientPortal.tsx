@@ -1,7 +1,7 @@
 import { useWorkflow } from '../context/WorkflowContext';
 import ClientPortal from '../components/client/ClientPortal';
 
-const ClientPortalPage: React.FC = () => {
+function ClientPortalPage() {
   const { currentWorkflow, saveProgress, loading, error } = useWorkflow();
 
   if (loading) {
@@ -28,6 +28,10 @@ const ClientPortalPage: React.FC = () => {
     );
   }
 
+  const handleSave = async (sectionId: string, data: Record<string, any>) => {
+    await saveProgress(sectionId, data);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
@@ -39,16 +43,15 @@ const ClientPortalPage: React.FC = () => {
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <ClientPortal
           sections={currentWorkflow.sections}
-          onSave={async (sectionId, data) => {
-            await saveProgress(sectionId, data);
-          }}
+          onSave={handleSave}
         />
       </main>
     </div>
   );
-};
+}
 
 export default ClientPortalPage;
+
 /*
 
 import React, { useState } from 'react';

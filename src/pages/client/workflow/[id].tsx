@@ -1,19 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import ClientPortal from '../../../components/client/ClientPortal';
+import FinancialInformationForm from '../../../components/client/FinancialInformationForm';
+import type { WorkflowSection, Workflow } from '../../../types/workflow.types';
 import { WorkflowService } from '../../../services/WorkflowService';
-import type { WorkflowSection, Workflow } from '../../../types/workflow.types.ts';
+import { useWorkflow } from '../../../context/WorkflowContext';
 
 interface WorkflowData extends Omit<Workflow, 'sections'> {
   sections: WorkflowSection[];
 }
 
-const WorkflowPage: React.FC = () => {
+function WorkflowPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [workflow, setWorkflow] = useState<WorkflowData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { saveProgress } = useWorkflow();
 
   useEffect(() => {
     async function loadWorkflow() {
@@ -54,14 +56,9 @@ const WorkflowPage: React.FC = () => {
 
   const handleSave = async (sectionId: string, data: Record<string, any>) => {
     if (!workflow?.id) return;
-    
-    try {
-      await WorkflowService.saveFormResponse(workflow.id, sectionId, data);
-    } catch (err) {
-      console.error('Error saving form:', err);
-      throw err;
-    }
+    await saveProgress(sectionId, data);
   };
+
 
   if (loading) {
     return (
@@ -118,7 +115,7 @@ const WorkflowPage: React.FC = () => {
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <ClientPortal 
+        <FinancialInformationForm 
           sections={workflow.sections}
           onSave={handleSave}
         />
@@ -127,4 +124,4 @@ const WorkflowPage: React.FC = () => {
   );
 }
 
-export default WorkflowPage
+export default WorkflowPage;

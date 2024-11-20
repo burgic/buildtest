@@ -1,3 +1,64 @@
+import { useState } from 'react';
+import type { WorkflowSection } from '../../types/workflow.types';
+
+interface ClientPortalProps {
+  sections: WorkflowSection[];
+  onSave: (sectionId: string, data: Record<string, any>) => Promise<void>;
+}
+
+function ClientPortal({ sections, onSave }: ClientPortalProps) {
+  const [activeSection, setActiveSection] = useState(sections[0]?.id || '');
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">
+          Financial Information Form
+        </h2>
+
+        <div className="flex space-x-4 mb-8 overflow-x-auto pb-2">
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap
+                ${activeSection === section.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+            >
+              {section.title}
+            </button>
+          ))}
+        </div>
+
+        {/* Display active section content */}
+        {sections
+          .filter((section) => section.id === activeSection)
+          .map((section) => (
+            <div key={section.id} className="space-y-4">
+              <h3 className="text-lg font-medium">{section.title}</h3>
+              {section.fields.map((field) => (
+                <div key={field.id} className="form-field">
+                  {/* Implement your form fields here */}
+                </div>
+              ))}
+              <button
+                onClick={() => onSave(section.id, { example: "data" })}
+                className="px-4 py-2 bg-blue-600 text-white rounded"
+              >
+                Save Section
+              </button>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
+
+export default ClientPortal;
+
+/*
 import React, { useState, useEffect } from 'react';
 import { Upload } from 'lucide-react';
 import { useWorkflow } from '../../context/WorkflowContext';
@@ -65,7 +126,7 @@ const ClientPortal: React.FC<ClientPortalProps> = () => {
           Financial Information Form
         </h2>
 
-        {/* Section Navigation */}
+        
         <div className="flex space-x-4 mb-8 overflow-x-auto pb-2">
           {currentWorkflow.sections.map((section) => (
             <button
@@ -82,7 +143,7 @@ const ClientPortal: React.FC<ClientPortalProps> = () => {
           ))}
         </div>
 
-        {/* Form Section */}
+        
         {currentSection && (
           <div>
             <h3 className="text-lg font-medium text-gray-900 mb-4">
@@ -116,7 +177,7 @@ const ClientPortal: React.FC<ClientPortalProps> = () => {
           </div>
         )}
 
-        {/* Document Upload Section */}
+       
         <div className="mt-6 border-t pt-6">
           <button 
             className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
@@ -131,3 +192,5 @@ const ClientPortal: React.FC<ClientPortalProps> = () => {
 };
 
 export default ClientPortal;
+
+*/
