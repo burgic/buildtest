@@ -6,12 +6,8 @@ import { AutosaveForm } from '../forms/AutosaveForm';
 import FormSection from '../forms/FormSection';
 import type { WorkflowSection, FormField } from '../../types/workflow.types';
 
-interface Section extends WorkflowSection {
-  data?: Record<string, any>;
-}
-
 export function WorkflowForms() {
-  const { currentWorkflow, saveProgress } = useWorkflow();
+  const { currentWorkflow, saveProgress, loading } = useWorkflow();
   const [activeSection, setActiveSection] = useState<string>('');
   const navigate = useNavigate();
 
@@ -23,7 +19,17 @@ export function WorkflowForms() {
     }
   };
 
-  if (!currentWorkflow?.sections) {
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#111111]">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  // Check if workflow exists and has sections
+  if (!currentWorkflow?.sections || currentWorkflow.sections.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#111111]">
         <div className="text-gray-400">No workflow sections available</div>
@@ -31,12 +37,14 @@ export function WorkflowForms() {
     );
   }
 
-  const sections: Section[] = currentWorkflow.sections;
-  const currentSection = sections.find(s => s.id === activeSection) || sections[0];
+  const sections = currentWorkflow.sections;
 
-  if (!currentSection && sections.length > 0) {
+  // Set initial active section if none is selected
+  if (!activeSection && sections.length > 0) {
     setActiveSection(sections[0].id);
   }
+
+  const currentSection = sections.find(s => s.id === activeSection);
 
   const handleSectionComplete = (sectionId: string) => {
     const currentIndex = sections.findIndex(s => s.id === sectionId);
@@ -63,7 +71,7 @@ export function WorkflowForms() {
           {/* Section Navigation */}
           <div className="col-span-3">
             <div className="space-y-1">
-              {sections.map((section) => (
+              {sections.map((section: WorkflowSection) => (
                 <button
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
@@ -101,7 +109,7 @@ export function WorkflowForms() {
                     }}
                   >
                     <div className="grid grid-cols-2 gap-6">
-                      {currentSection.fields.map((field: FormField) => (
+                      {currentSection.fields?.map((field: FormField) => (
                         <FormSection
                           key={field.id}
                           label={field.label}

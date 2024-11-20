@@ -17,6 +17,7 @@ interface WorkflowContextType {
   error: Error | null;
 }
 
+// Define defaultSections first
 const defaultSections: WorkflowSection[] = [
   {
     id: 'personal',
@@ -72,8 +73,10 @@ const defaultSections: WorkflowSection[] = [
   }
 ];
 
+// Create context once
 const WorkflowContext = createContext<WorkflowContextType | undefined>(undefined);
 
+// Single Provider implementation
 export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [currentWorkflow, setCurrentWorkflow] = useState<WorkflowContextType['currentWorkflow']>(null);
@@ -160,16 +163,17 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value = {
-    currentWorkflow,
-    setCurrentWorkflow,
-    saveProgress,
-    loading,
-    error
-  };
-
+  // Provide all values defined in WorkflowContextType
   return (
-    <WorkflowContext.Provider value={value}>
+    <WorkflowContext.Provider 
+      value={{
+        currentWorkflow,
+        setCurrentWorkflow,
+        saveProgress,
+        loading,
+        error
+      }}
+    >
       {children}
     </WorkflowContext.Provider>
   );
@@ -177,11 +181,12 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
 export function useWorkflow() {
   const context = useContext(WorkflowContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useWorkflow must be used within a WorkflowProvider');
   }
   return context;
 }
+
 /*
 
 interface WorkflowContextType {
