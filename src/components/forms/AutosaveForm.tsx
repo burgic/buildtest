@@ -1,5 +1,5 @@
 // src/components/forms/AutosaveForm.tsx
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import debounce from 'lodash/debounce';
 import { useWorkflow } from '../../context/WorkflowContext';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -23,6 +23,10 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   
   const { saveProgress } = useWorkflow();
+
+  useEffect(() => {
+    setFormData(initialData);
+  }, [initialData]);
 
   const debouncedSave = useCallback(
     debounce(async (data: Record<string, any>) => {

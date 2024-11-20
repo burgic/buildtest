@@ -178,7 +178,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           ...prev,
           sections: prev.sections.map(section =>
             section.id === sectionId
-              ? { ...section, data }
+              ? { ...section, data: { ...(section.data || {}), ... data } }
               : section
           )
         };
