@@ -2,6 +2,7 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthProvider';
 import { WorkflowProvider } from './context/WorkflowContext';
+import { WorkflowForms } from './components/workflow/WorkflowForms';
 import { AppLayout } from './components/AppLayout';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import AdvisorDashboard from './pages/AdvisorDashboard';
@@ -45,7 +46,15 @@ function App() {
                     }
                   />
                   
-                
+                  <Route
+                  path="/workflow"
+                  element={
+                    <ProtectedRoute>
+                      <WorkflowForms />
+                    </ProtectedRoute>
+                  }
+                />
+
                 <Route
                   path="/dashboard"
                   element={

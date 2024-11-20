@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Briefcase, Users, FileText, LogOut } from 'lucide-react';
+import { Briefcase, Users, FileText, LogOut, ClipboardCheck } from 'lucide-react';
 import { useAuth } from "../context/AuthProvider"
 
 const Navigation: React.FC = () => {
@@ -43,6 +43,17 @@ const Navigation: React.FC = () => {
                 <FileText className="w-5 h-5" />
                 <span>Reports</span>
               </NavLink>
+              <div className="flex space-x-4">
+              <NavLink to="/dashboard" className={linkClass}>
+                <Briefcase className="w-5 h-5" />
+                <span>Dashboard</span>
+              </NavLink>
+              <NavLink to="/workflow" className={linkClass}>
+                <ClipboardCheck className="w-5 h-5" />
+                <span>Complete Profile</span>
+              </NavLink>
+              {/* ... other navigation items ... */}
+            </div>
             </div>
           </div>
           <div className="flex items-center space-x-4">

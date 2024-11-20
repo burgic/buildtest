@@ -15,6 +15,7 @@ import {
 // import type { WorkflowSection } from '../types/workflow.types';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
+import { useNavigate } from 'react-router-dom';
 
 interface SectionData {
   [key: string]: {
@@ -27,6 +28,7 @@ interface SectionData {
 type FormResponse = Database['public']['Tables']['form_responses']['Row'];
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { currentWorkflow } = useWorkflow();
   const [responses, setResponses] = useState<SectionData>({});
   const [loading, setLoading] = useState(true);
@@ -123,6 +125,32 @@ export default function Dashboard() {
       icon: '🛡️'
     }
   ];
+
+  const isProfileComplete = () => {
+    if (!currentWorkflow?.sections) return false;
+    return currentWorkflow.sections.every(section => 
+      responses[section.id] && Object.keys(responses[section.id].data).length > 0
+    );
+  };
+
+  if (!isProfileComplete()) {
+    return (
+      <div className="min-h-screen bg-[#111111] text-gray-100 p-6">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="text-2xl font-semibold mb-4">Complete Your Profile</h2>
+          <p className="text-gray-400 mb-8">
+            Please complete your financial profile to view your dashboard
+          </p>
+          <button
+            onClick={() => navigate('/workflow')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Complete Profile
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#111111] text-gray-100 p-6">
