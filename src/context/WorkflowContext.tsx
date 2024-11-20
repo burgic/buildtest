@@ -3,14 +3,18 @@ import { useAuth } from './AuthProvider';
 import { supabase } from '../lib/supabase';
 import type { WorkflowSection } from '../types';
 
+interface WorkflowData {
+  id: string;
+  title: string;
+  advisor_id: string;
+  status: 'draft' | 'active' | 'completed' | 'archived';
+  sections: WorkflowSection[];
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface WorkflowContextType {
-  currentWorkflow: {
-    id: string;
-    title: string;
-    advisor_id: string;
-    status: 'draft' | 'active' | 'completed' | 'archived';
-    sections: WorkflowSection[];
-  } | null;
+  currentWorkflow: WorkflowData | null; // Use WorkflowData here
   setCurrentWorkflow: (workflow: any) => void;
   saveProgress: (sectionId: string, data: Record<string, any>) => Promise<void>;
   loading: boolean;
@@ -30,7 +34,8 @@ const defaultSections: WorkflowSection[] = [
       { id: 'email', label: 'Email', type: 'email', required: true },
       { id: 'phone', label: 'Phone', type: 'tel', required: true },
       { id: 'address', label: 'Address', type: 'text', required: true }
-    ]
+    ], 
+    data: {}
   },
   {
     id: 'employment',
@@ -43,7 +48,8 @@ const defaultSections: WorkflowSection[] = [
       { id: 'position', label: 'Position', type: 'text', required: true },
       { id: 'annualIncome', label: 'Annual Income', type: 'number', required: true },
       { id: 'yearsEmployed', label: 'Years Employed', type: 'number', required: true }
-    ]
+    ], 
+    data: {}
   },
   {
     id: 'expenses',
@@ -56,7 +62,8 @@ const defaultSections: WorkflowSection[] = [
       { id: 'utilities', label: 'Utilities', type: 'number', required: true },
       { id: 'transportation', label: 'Transportation', type: 'number', required: true },
       { id: 'insurance', label: 'Insurance', type: 'number', required: true }
-    ]
+    ], 
+    data: {}
   },
   {
     id: 'assets',
@@ -69,7 +76,8 @@ const defaultSections: WorkflowSection[] = [
       { id: 'investments', label: 'Investments', type: 'number', required: true },
       { id: 'propertyValue', label: 'Property Value', type: 'number', required: true },
       { id: 'totalDebt', label: 'Total Debt', type: 'number', required: true }
-    ]
+    ], 
+    data: {}
   }
 ];
 
@@ -91,47 +99,62 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const { data: existingWorkflows, error: fetchError } = await supabase
+        const { data, error: fetchError } = await supabase
           .from('workflows')
           .select('*')
           .eq('advisor_id', user.id)
           .eq('status', 'active')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
 
-        if (fetchError) throw fetchError;
-
-        let workflow;
-        
-        if (existingWorkflows && existingWorkflows.length > 0) {
-          workflow = existingWorkflows[0];
-        } else {
-          const newWorkflow = {
-            title: 'Financial Information Workflow',
+          if (fetchError || !data) {
+            // Create new workflow with default sections
+            const newWorkflow = {
+              id: 'temp-' + Date.now(),
+              title: 'Financial Profile',
+              advisor_id: user.id,
+              status: 'active' as 'active',
+              sections: defaultSections // Use our complete sections
+            };
+  
+            const { data: createdWorkflow, error: createError } = await supabase
+              .from('workflows')
+              .insert([newWorkflow])
+              .select()
+              .single();
+  
+            if (createError) throw createError;
+            
+            console.log('Created new workflow:', createdWorkflow);
+            setCurrentWorkflow({
+              ...createdWorkflow,
+              sections: defaultSections // Ensure sections are complete
+            });
+          } else {
+            console.log('Found existing workflow:', data);
+            setCurrentWorkflow({
+              ...data[0],
+              sections: defaultSections
+            });
+          }
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Failed to initialize workflow';
+          console.error('Error in workflow initialization:', errorMessage);
+          setError(err instanceof Error ? err : new Error(errorMessage));
+          // Fallback to memory-only workflow if database fails
+          setCurrentWorkflow({
+            id: 'temp-' + Date.now(),
+            title: 'Financial Profile',
             advisor_id: user.id,
-            status: 'active' as const,
+            status: 'active',
             sections: defaultSections
-          };
-
-          const { data: createdWorkflow, error: createError } = await supabase
-            .from('workflows')
-            .insert(newWorkflow)
-            .select()
-            .single();
-
-          if (createError) throw createError;
-          workflow = createdWorkflow;
+          });
+        } finally {
+          setLoading(false);
         }
-
-        setCurrentWorkflow(workflow);
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to initialize workflow'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeWorkflow();
-  }, [user]);
+      };
+  
+      initializeWorkflow();
+    }, [user]);
 
   const saveProgress = async (sectionId: string, data: Record<string, any>) => {
     if (!currentWorkflow?.id) {
@@ -157,8 +180,10 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             : section
         )
       } : null);
-    } catch (error) {
+    } catch (err) {
       console.error('Error in saveProgress:', error);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save progress';
+      setError(new Error(errorMessage));
       throw error;
     }
   };

@@ -13,6 +13,9 @@ export default function FinancialProfile() {
     }
   }, [currentWorkflow]);
 
+  // Debug logging
+  console.log('Current Workflow:', currentWorkflow);
+
   // Show loading state
   if (loading) {
     return (
@@ -36,6 +39,9 @@ export default function FinancialProfile() {
   const currentSection = activeSection 
     ? currentWorkflow.sections.find(s => s.id === activeSection)
     : currentWorkflow.sections[0];
+
+  // Debug logging for current section
+  console.log('Current section fields:', currentSection?.fields);
 
   return (
     <div className="min-h-screen bg-[#111111] text-gray-100 p-6">
@@ -63,42 +69,44 @@ export default function FinancialProfile() {
         {currentSection && (
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-semibold mb-4">{currentSection.title}</h2>
-            <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-              {currentSection.fields?.map(field => (
-                <div key={field.id} className="space-y-1">
-                  <label 
-                    htmlFor={field.id}
-                    className="block text-sm font-medium text-gray-300"
+            {!currentSection.fields ? (
+              <div className="text-red-500">No fields defined for this section</div>
+            ) : (
+              <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+                {currentSection.fields.map(field => {
+                  console.log('Rendering field:', field);
+                  return (
+                    <div key={field.id} className="space-y-1">
+                      <label 
+                        htmlFor={field.id}
+                        className="block text-sm font-medium text-gray-300"
+                      >
+                        {field.label}
+                        {field.required && (
+                          <span className="text-red-500 ml-1">*</span>
+                        )}
+                      </label>
+                      <input
+                        type={field.type}
+                        id={field.id}
+                        name={field.id}
+                        required={field.required}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  );
+                })}
+                
+                <div className="flex justify-end mt-6">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                   >
-                    {field.label}
-                    {field.required && (
-                      <span className="text-red-500 ml-1">*</span>
-                    )}
-                  </label>
-                  {field.type === 'select' && field.options ? (
-                    <select
-                      id={field.id}
-                      name={field.id}
-                      required={field.required}
-                      className="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Select...</option>
-                      {field.options.map(option => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type={field.type}
-                      id={field.id}
-                      name={field.id}
-                      required={field.required}
-                      className="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  )}
+                    Save
+                  </button>
                 </div>
-              ))}
-            </form>
+              </form>
+            )}
           </div>
         )}
 
