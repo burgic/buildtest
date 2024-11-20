@@ -36,13 +36,15 @@ function App() {
                   <Route
                     path="/client/*"
                     element={
-                      <ProtectedRoute requiredRole="client">
-                        <ClientPortal />
+                      <ProtectedRoute>
+                        <Routes>
+                          <Route index element={<ClientPortal />} />
+                          <Route path="workflow/:id" element={<ClientPortal />} />
+                        </Routes>
                       </ProtectedRoute>
                     }
                   />
                   
-                
                 
                 <Route
                   path="/dashboard"
