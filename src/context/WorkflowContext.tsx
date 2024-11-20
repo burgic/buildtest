@@ -106,7 +106,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
           .eq('status', 'active')
           .order('created_at', { ascending: false })
 
-          if (fetchError || !data) {
+          if (fetchError) {
             // Create new workflow with default sections
             const newWorkflow = {
               id: 'temp-' + Date.now(),
@@ -115,6 +115,11 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
               status: 'active' as 'active',
               sections: defaultSections // Use our complete sections
             };
+
+          if (fetchError) {
+            console.error('Error fetching workflow:', fetchError);
+            throw fetchError;
+          }
   
             const { data: createdWorkflow, error: createError } = await supabase
               .from('workflows')
