@@ -3,6 +3,62 @@ import { useAuth } from './AuthProvider';
 import { supabase } from '../lib/supabase';
 import type { WorkflowSection } from '../types';
 
+
+const defaultSections: WorkflowSection[] = [
+  {
+    id: 'personal',
+    title: 'Personal Details',
+    type: 'personal',
+    required: true,
+    order: 1,
+    fields: [
+      { id: 'fullName', label: 'Full Name', type: 'text', required: true },
+      { id: 'email', label: 'Email', type: 'email', required: true },
+      { id: 'phone', label: 'Phone', type: 'tel', required: true },
+      { id: 'address', label: 'Address', type: 'text', required: true }
+    ]
+  },
+  {
+    id: 'employment',
+    title: 'Employment & Income',
+    type: 'financial',
+    required: true,
+    order: 2,
+    fields: [
+      { id: 'employer', label: 'Employer', type: 'text', required: true },
+      { id: 'position', label: 'Position', type: 'text', required: true },
+      { id: 'annualIncome', label: 'Annual Income', type: 'number', required: true },
+      { id: 'yearsEmployed', label: 'Years Employed', type: 'number', required: true }
+    ]
+  },
+  {
+    id: 'expenses',
+    title: 'Monthly Expenses',
+    type: 'financial',
+    required: true,
+    order: 3,
+    fields: [
+      { id: 'housing', label: 'Housing', type: 'number', required: true },
+      { id: 'utilities', label: 'Utilities', type: 'number', required: true },
+      { id: 'transportation', label: 'Transportation', type: 'number', required: true },
+      { id: 'insurance', label: 'Insurance', type: 'number', required: true }
+    ]
+  },
+  {
+    id: 'assets',
+    title: 'Assets & Liabilities',
+    type: 'financial',
+    required: true,
+    order: 4,
+    fields: [
+      { id: 'cashSavings', label: 'Cash & Savings', type: 'number', required: true },
+      { id: 'investments', label: 'Investments', type: 'number', required: true },
+      { id: 'propertyValue', label: 'Property Value', type: 'number', required: true },
+      { id: 'totalDebt', label: 'Total Debt', type: 'number', required: true }
+    ]
+  }
+];
+
 interface WorkflowContextType {
   currentWorkflow: {
     id: string;
@@ -65,13 +121,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
             title: 'Financial Information Workflow',
             advisor_id: session.user.id,
             status: 'active' as const,
-            sections: [
-              { id: 'personal', title: 'Personal Details', data: {} },
-              { id: 'employment', title: 'Employment & Income', data: {} },
-              { id: 'expenses', title: 'Monthly Expenses', data: {} },
-              { id: 'assets', title: 'Assets & Liabilities', data: {} },
-              { id: 'goals', title: 'Financial Goals', data: {} }
-            ]
+            sections: defaultSections  // Use defaultSections instead of the simple array
           };
 
           const { data: createdWorkflow, error: createError } = await supabase
