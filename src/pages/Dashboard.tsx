@@ -1,7 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useWorkflow } from '../context/WorkflowContext';
-import { AlertCircle, CheckCircle, Wallet, CreditCard, DollarSign } from 'lucide-react';
-import type { WorkflowSection } from '../types/workflow.types';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Circle, 
+  Wallet, 
+  CreditCard, 
+  DollarSign,
+  FileText,
+  CheckCircle2,
+  ChevronRight,
+  Clock
+} from 'lucide-react';
+// import type { WorkflowSection } from '../types/workflow.types';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 
@@ -15,7 +26,7 @@ interface SectionData {
 
 type FormResponse = Database['public']['Tables']['form_responses']['Row'];
 
-export default function ClientDashboard() {
+export default function Dashboard() {
   const { currentWorkflow } = useWorkflow();
   const [responses, setResponses] = useState<SectionData>({});
   const [loading, setLoading] = useState(true);
@@ -32,7 +43,6 @@ export default function ClientDashboard() {
 
         if (error) throw error;
 
-        // Group responses by section_id
         const groupedResponses = (data || []).reduce((acc: SectionData, response: FormResponse) => {
           acc[response.section_id] = {
             data: response.data as { [key: string]: string }
@@ -65,20 +75,23 @@ export default function ClientDashboard() {
     const monthlyIncome = parseFloat(incomeData.annualIncome || '0') / 12;
     const monthlyExpenses = Object.values(expenseData).reduce((sum, val) => sum + (parseFloat(val as string) || 0), 0);
     const totalAssets = Object.values(assetData).reduce((sum, val) => sum + (parseFloat(val as string) || 0), 0);
+    const totalDebt = parseFloat(assetData.totalDebt || '0');
 
     return {
       monthlyIncome,
       monthlyExpenses,
       totalAssets,
-      monthlySavings: monthlyIncome - monthlyExpenses
+      totalDebt,
+      monthlySavings: monthlyIncome - monthlyExpenses,
+      savingsRate: ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100
     };
   };
 
-  const { monthlyIncome, monthlyExpenses, totalAssets } = getFinancialData();
+  const { monthlyIncome, monthlyExpenses, totalAssets, totalDebt, monthlySavings, savingsRate } = getFinancialData();
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-screen bg-[#111111]">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
       </div>
     );
@@ -88,120 +101,204 @@ export default function ClientDashboard() {
     {
       name: 'Housing',
       value: parseFloat(responses?.expenses?.data?.housing || '0'),
-      color: '#0088FE'
+      color: '#3291FF',
+      icon: '🏠'
     },
     {
       name: 'Utilities', 
       value: parseFloat(responses?.expenses?.data?.utilities || '0'),
-      color: '#00C49F'
+      color: '#7AC7C4',
+      icon: '💡'
     },
     {
       name: 'Transport',
       value: parseFloat(responses?.expenses?.data?.transportation || '0'),
-      color: '#FFBB28'
+      color: '#F5A524',
+      icon: '🚗'
     },
     {
       name: 'Insurance',
       value: parseFloat(responses?.expenses?.data?.insurance || '0'),
-      color: '#FF8042'
+      color: '#C25FFF',
+      icon: '🛡️'
     }
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Progress Overview */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4">Workflow Progress</h2>
-        <div className="relative h-4 bg-gray-200 rounded-full overflow-hidden">
-          <div 
-            className="absolute left-0 top-0 h-full bg-blue-500 transition-all duration-500"
-            style={{ width: `${calculateProgress()}%` }}
-          />
-        </div>
-        <div className="mt-2 text-sm text-gray-600">
-          {calculateProgress()}% Complete
-        </div>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Monthly Income</p>
-              <p className="text-2xl font-bold">${monthlyIncome.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-            </div>
-            <DollarSign className="w-8 h-8 text-green-500" />
+    <div className="min-h-screen bg-[#111111] text-gray-100 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-semibold text-white">Financial Dashboard</h1>
+            <p className="text-gray-400 mt-1">Overview of your financial profile</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="text-sm text-gray-400">Last updated: {new Date().toLocaleDateString()}</div>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Monthly Expenses</p>
-              <p className="text-2xl font-bold">${monthlyExpenses.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-            </div>
-            <CreditCard className="w-8 h-8 text-red-500" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Assets</p>
-              <p className="text-2xl font-bold">${totalAssets.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-            </div>
-            <Wallet className="w-8 h-8 text-blue-500" />
-          </div>
-        </div>
-      </div>
 
-      {/* Expense Breakdown */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold mb-4">Expense Breakdown</h3>
-        <div className="grid grid-cols-2 gap-4">
-          {expenseBreakdown.map((item) => (
-            <div key={item.name} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="text-sm text-gray-600">{item.name}</span>
-              </div>
-              <span className="text-sm font-medium">
-                ${item.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Incomplete Sections */}
-      {currentWorkflow?.sections && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Sections to Complete</h3>
-          <div className="space-y-3">
-            {currentWorkflow.sections.map((section: WorkflowSection) => {
+        {/* Progress Card */}
+        <div className="bg-[#1D1D1F] rounded-xl p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-medium">Onboarding Progress</h2>
+            <span className="text-sm text-gray-400">{calculateProgress()}% Complete</span>
+          </div>
+          <div className="relative h-2 bg-[#111111] rounded-full overflow-hidden">
+            <div 
+              className="absolute left-0 top-0 h-full bg-blue-500 transition-all duration-500"
+              style={{ width: `${calculateProgress()}%` }}
+            />
+          </div>
+          
+          {/* Section Status */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {currentWorkflow?.sections.map((section) => {
               const isComplete = responses[section.id];
               return (
-                <div key={section.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div 
+                  key={section.id}
+                  className="flex items-center justify-between p-3 bg-[#252528] rounded-lg hover:bg-[#2D2D30] transition-colors cursor-pointer"
+                >
                   <div className="flex items-center space-x-3">
                     {isComplete ? (
-                      <CheckCircle className="w-5 h-5 text-green-500" />
+                      <CheckCircle2 className="w-5 h-5 text-green-500" />
                     ) : (
-                      <AlertCircle className="w-5 h-5 text-yellow-500" />
+                      <Circle className="w-5 h-5 text-gray-500" />
                     )}
-                    <span className={`${isComplete ? 'text-gray-600' : 'text-gray-900'}`}>
+                    <span className={isComplete ? 'text-gray-300' : 'text-gray-400'}>
                       {section.title}
                     </span>
                   </div>
-                  {!isComplete && (
-                    <button className="text-sm text-blue-600 hover:text-blue-800">
-                      Complete Now
-                    </button>
-                  )}
+                  <ChevronRight className="w-4 h-4 text-gray-500" />
                 </div>
               );
             })}
           </div>
         </div>
-      )}
+
+        {/* Financial Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-[#1D1D1F] p-6 rounded-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-2 bg-green-500/10 rounded-lg">
+                <DollarSign className="w-5 h-5 text-green-500" />
+              </div>
+              <TrendingUp className="w-4 h-4 text-green-500" />
+            </div>
+            <p className="text-sm text-gray-400">Monthly Income</p>
+            <p className="text-2xl font-semibold mt-1">
+              ${monthlyIncome.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </p>
+          </div>
+
+          <div className="bg-[#1D1D1F] p-6 rounded-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-2 bg-red-500/10 rounded-lg">
+                <CreditCard className="w-5 h-5 text-red-500" />
+              </div>
+              {monthlySavings < 0 && <TrendingUp className="w-4 h-4 text-red-500" />}
+            </div>
+            <p className="text-sm text-gray-400">Monthly Expenses</p>
+            <p className="text-2xl font-semibold mt-1">
+              ${monthlyExpenses.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </p>
+          </div>
+
+          <div className="bg-[#1D1D1F] p-6 rounded-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-2 bg-blue-500/10 rounded-lg">
+                <Wallet className="w-5 h-5 text-blue-500" />
+              </div>
+            </div>
+            <p className="text-sm text-gray-400">Total Assets</p>
+            <p className="text-2xl font-semibold mt-1">
+              ${totalAssets.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </p>
+          </div>
+
+          <div className="bg-[#1D1D1F] p-6 rounded-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-2 bg-yellow-500/10 rounded-lg">
+                <FileText className="w-5 h-5 text-yellow-500" />
+              </div>
+            </div>
+            <p className="text-sm text-gray-400">Total Debt</p>
+            <p className="text-2xl font-semibold mt-1">
+              ${totalDebt.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+
+        {/* Expense Breakdown */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-[#1D1D1F] rounded-xl p-6">
+            <h3 className="text-lg font-medium mb-4">Expense Breakdown</h3>
+            <div className="space-y-4">
+              {expenseBreakdown.map((item) => {
+                const percentage = (item.value / monthlyExpenses) * 100;
+                return (
+                  <div key={item.name}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">{item.icon}</span>
+                        <span className="text-sm text-gray-400">{item.name}</span>
+                      </div>
+                      <span className="text-sm font-medium">
+                        ${item.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                    <div className="relative h-2 bg-[#111111] rounded-full overflow-hidden">
+                      <div 
+                        className="absolute left-0 top-0 h-full transition-all duration-500"
+                        style={{ 
+                          width: `${percentage}%`,
+                          backgroundColor: item.color 
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Savings Analysis */}
+          <div className="bg-[#1D1D1F] rounded-xl p-6">
+            <h3 className="text-lg font-medium mb-4">Savings Analysis</h3>
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-400">Monthly Savings</span>
+                  <span className={`text-lg font-medium ${monthlySavings >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    ${Math.abs(monthlySavings).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2 text-sm">
+                  {monthlySavings >= 0 ? (
+                    <TrendingUp className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4 text-red-500" />
+                  )}
+                  <span className="text-gray-400">
+                    {savingsRate.toFixed(1)}% of income
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-gray-800">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Clock className="w-4 h-4 text-gray-400" />
+                  <h4 className="text-sm font-medium">Recent Transactions</h4>
+                </div>
+                <div className="text-sm text-gray-400 text-center py-8">
+                  Connect your bank account to see transactions
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
