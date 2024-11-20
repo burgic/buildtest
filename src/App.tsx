@@ -13,6 +13,7 @@ import './index.css';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import AuthCallback from './pages/auth/callback';
 import Dashboard from './pages/Dashboard';
+import FinancialProfile from './pages/FinancialProfile';
 
 function App() {
   return (
@@ -61,6 +62,14 @@ function App() {
                     <ProtectedRoute>
                       <Navigate to="/dashboard" replace />
                       <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <FinancialProfile />
                     </ProtectedRoute>
                   }
                 />

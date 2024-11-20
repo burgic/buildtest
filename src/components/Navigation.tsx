@@ -48,9 +48,17 @@ const Navigation: React.FC = () => {
                 <Briefcase className="w-5 h-5" />
                 <span>Dashboard</span>
               </NavLink>
-              <NavLink to="/workflow" className={linkClass}>
+              <NavLink 
+                to="/profile" 
+                className={({ isActive }) => `
+                  flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors
+                  ${isActive 
+                    ? 'bg-blue-600 text-white' 
+                    : 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'}
+                `}
+              >
                 <ClipboardCheck className="w-5 h-5" />
-                <span>Complete Profile</span>
+                <span>Financial Profile</span>
               </NavLink>
               {/* ... other navigation items ... */}
             </div>
