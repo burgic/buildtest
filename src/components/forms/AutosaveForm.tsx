@@ -1,15 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+// src/components/forms/AutosaveForm.tsx
+import React, { useState, useCallback } from 'react';
 import debounce from 'lodash/debounce';
 import { useWorkflow } from '../../context/WorkflowContext';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 
-export interface FormInputProps {
-  name: string;
-  value?: string | number;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
-}
-
-export interface AutosaveFormProps {
+interface AutosaveFormProps {
   sectionId: string;
   initialData?: Record<string, any>;
   children: React.ReactNode;
@@ -30,7 +25,7 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   const { saveProgress } = useWorkflow();
 
   const debouncedSave = useCallback(
-    debounce(async (sectionId: string, data: Record<string, any>) => {
+    debounce(async (data: Record<string, any>) => {
       try {
         setSaving(true);
         setError(null);
@@ -44,7 +39,7 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
         setSaving(false);
       }
     }, 1500),
-    [saveProgress, onSave]
+    [sectionId, saveProgress, onSave]
   );
 
   const handleInputChange = (
@@ -53,24 +48,15 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     const { name, value, type } = event.target;
     const newValue = type === 'number' ? parseFloat(value) || 0 : value;
     
-    setFormData(prevData => {
-      const newData = {
-        ...prevData,
-        [name]: newValue
-      };
-      
-      // Call debouncedSave with both sectionId and the new data
-      debouncedSave(sectionId, newData);
-      
+    setFormData(prev => {
+      const newData = { ...prev, [name]: newValue };
+      debouncedSave(newData);
       return newData;
     });
   };
 
-  useEffect(() => {
-    return () => {
-      debouncedSave.cancel();
-    };
-  }, [debouncedSave]);
+  console.log('Form data:', formData);
+
 
   return (
     <div className="space-y-4">
@@ -84,11 +70,6 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
         {lastSaved && !saving && (
           <div className="text-gray-500">
             Last saved: {lastSaved.toLocaleTimeString()}
-          </div>
-        )}
-        {error && (
-          <div className="text-red-600 bg-red-50 px-3 py-1 rounded-full text-sm">
-            {error}
           </div>
         )}
       </div>
@@ -105,6 +86,12 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
           return child;
         })}
       </form>
+
+      {error && (
+        <div className="mt-2 text-sm text-red-600">
+          {error}
+        </div>
+      )}
     </div>
   );
 };

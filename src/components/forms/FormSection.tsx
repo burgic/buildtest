@@ -16,6 +16,7 @@ export interface FormSectionProps {
     message?: string;
   };
   onChange?: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  error?: string | null;
 }
 
 const FormSection: React.FC<FormSectionProps> = ({
@@ -27,26 +28,28 @@ const FormSection: React.FC<FormSectionProps> = ({
   required = false,
   options,
   validation,
-  onChange
+  onChange,
+  error
 }) => {
-  const baseClassName = "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm";
-
-  const renderInput = () => {
+    const baseClasses = `
+      w-full bg-[#2D2D2F] border border-gray-700 rounded-lg px-3 py-2
+      text-white placeholder-gray-500 focus:outline-none focus:ring-2 
+      focus:ring-blue-500 focus:border-transparent transition-all
+    `;
+    const renderInput = () => {
     if (type === 'select' && options) {
       return (
         <select
           id={name}
           name={name}
-          value={value?.toString() || ''}
+          value={value || ''}
           onChange={onChange}
-          className={baseClassName}
           required={required}
+          className={baseClasses}
         >
           <option value="">Select...</option>
           {options.map(option => (
-            <option key={option} value={option}>
-              {option}
-            </option>
+            <option key={option} value={option}>{option}</option>
           ))}
         </select>
       );
@@ -60,7 +63,7 @@ const FormSection: React.FC<FormSectionProps> = ({
         value={value?.toString() || ''}
         onChange={onChange}
         placeholder={placeholder}
-        className={baseClassName}
+        className={baseClasses}
         required={required}
         min={validation?.min}
         max={validation?.max}
@@ -70,14 +73,20 @@ const FormSection: React.FC<FormSectionProps> = ({
   };
 
   return (
-    <div>
-      <label htmlFor={name} className="block text-sm font-medium text-gray-700">
+    <div className="space-y-2">
+      <label 
+        htmlFor={name} 
+        className="block text-sm font-medium text-gray-300"
+      >
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="text-blue-400 ml-1">*</span>}
       </label>
       {renderInput()}
       {validation?.message && (
-        <p className="mt-1 text-sm text-gray-500">{validation.message}</p>
+        <p className="text-sm text-gray-500">{validation.message}</p>
+      )}
+      {error && (
+        <p className="text-sm text-red-500">{error}</p>
       )}
     </div>
   );

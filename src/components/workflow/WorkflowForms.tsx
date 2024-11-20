@@ -57,6 +57,9 @@ export function WorkflowForms() {
     }
   };
 
+    console.log('Current workflow:', currentWorkflow);
+    console.log('Current section:', currentSection);
+
   return (
     <div className="min-h-screen bg-[#111111] text-gray-100">
       <div className="max-w-6xl mx-auto p-6">
