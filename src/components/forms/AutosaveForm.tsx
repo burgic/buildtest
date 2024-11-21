@@ -1,7 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import debounce from 'lodash/debounce';
 import { useWorkflow } from '../../context/WorkflowContext';
-import { LoadingSpinner } from '../common/LoadingSpinner';
 
 interface AutosaveFormProps {
   sectionId: string;
@@ -15,117 +14,75 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   sectionId,
   initialData = {},
   children,
-  onSave,
-  onStatusChange,
+  onSave
 }) => {
   const [formData, setFormData] = useState<Record<string, any>>(initialData);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
-
+  
   const { saveProgress } = useWorkflow();
-
-  useEffect(() => {
-    if (Object.keys(initialData).length > 0) {
-      setFormData(initialData);
-    }
-  }, [initialData]);
-
-  const validateData = (data: Record<string, any>): boolean => {
-    for (const [key, value] of Object.entries(data)) {
-      if (typeof value === 'string' && value.trim() === '') {
-        setError(`Field "${key}" cannot be empty.`);
-        return false;
-      }
-    }
-    return true;
-  };
 
   const debouncedSave = useCallback(
     debounce(async (data: Record<string, any>) => {
-      if (!validateData(data)) return;
-
       try {
         setSaving(true);
         setError(null);
-        onStatusChange?.({ saving: true, error: null });
         await saveProgress(sectionId, data);
         setLastSaved(new Date());
         onSave?.(data);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to save progress';
         console.error('Error in debouncedSave:', err);
-        setError(errorMessage);
-        onStatusChange?.({ saving: false, error: errorMessage });
+        setError(err instanceof Error ? err.message : 'Failed to save progress');
       } finally {
         setSaving(false);
-        onStatusChange?.({ saving: false, error: null });
       }
     }, 1500),
-    [sectionId, saveProgress, onSave, onStatusChange]
+    [sectionId, saveProgress, onSave]
   );
 
   const handleInputChange = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = event.target;
-    const newValue = type === 'number' ? parseFloat(value) || 0 : value;
-
-    setFormData((prev) => {
-      const newData = { ...prev, [name]: newValue };
+    const newValue = type === 'number' ? (value ? parseFloat(value) : '') : value;
+    
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: newValue
+      };
       debouncedSave(newData);
       return newData;
     });
   };
 
-  const retrySave = async () => {
-    try {
-      setSaving(true);
-      setError(null);
-      await saveProgress(sectionId, formData);
-      setLastSaved(new Date());
-      onSave?.(formData);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save progress';
-      console.error('Error in retrySave:', err);
-      setError(errorMessage);
-    } finally {
-      setSaving(false);
+  // Make sure to pass the correct props to children
+  const formChildren = React.Children.map(children, child => {
+    if (React.isValidElement(child)) {
+      return React.cloneElement(child, {
+        ...child.props,
+        value: formData[child.props.name] || '',
+        onChange: handleInputChange
+      });
     }
-  };
+    return child;
+  });
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between text-sm">
-        {saving && (
-          <div className="flex items-center space-x-2 text-gray-500">
-            <LoadingSpinner size="small" />
-            <span>Saving...</span>
-          </div>
-        )}
-        {lastSaved && !saving && (
-          <div className="text-gray-500">Last saved: {lastSaved.toLocaleTimeString()}</div>
-        )}
-      </div>
-
       <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-        {React.Children.map(children, (child) =>
-          React.isValidElement(child)
-            ? React.cloneElement(child, {
-                ...child.props,
-                value: formData[child.props.name] || '',
-                onChange: handleInputChange,
-              })
-            : child
-        )}
+        {formChildren}
       </form>
-
       {error && (
-        <div className="mt-2 text-sm text-red-600">
-          <span>{error}</span>
-          <button onClick={retrySave} className="ml-2 text-blue-600 hover:underline">
-            Retry
-          </button>
+        <div className="text-red-500 text-sm">{error}</div>
+      )}
+      {saving && (
+        <div className="text-gray-400 text-sm">Saving...</div>
+      )}
+      {lastSaved && !saving && (
+        <div className="text-gray-400 text-sm">
+          Last saved: {lastSaved.toLocaleTimeString()}
         </div>
       )}
     </div>

@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useAuth } from './AuthProvider';
+import React, { createContext, useContext, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { WorkflowSection } from '../types';
 
@@ -54,138 +53,124 @@ const defaultSections: WorkflowSection[] = [
     ],
     data: {},
   },
+  {
+    id: 'expenses',
+    title: 'Monthly Expenses',
+    type: 'financial',
+    required: true,
+    order: 3,
+    fields: [
+      { id: 'housing', label: 'Housing (Rent/Mortgage)', type: 'number', required: true },
+      { id: 'utilities', label: 'Utilities', type: 'number', required: true },
+      { id: 'transportation', label: 'Transportation', type: 'number', required: true },
+      { id: 'insurance', label: 'Insurance', type: 'number', required: true },
+      { id: 'food', label: 'Food & Groceries', type: 'number', required: true },
+      { id: 'healthcare', label: 'Healthcare', type: 'number', required: true },
+      { id: 'entertainment', label: 'Entertainment', type: 'number', required: false },
+      { id: 'other', label: 'Other Expenses', type: 'number', required: false }
+    ],
+    data: {}
+  },
+  {
+    id: 'assets',
+    title: 'Assets & Liabilities',
+    type: 'financial',
+    required: true,
+    order: 4,
+    fields: [
+      { id: 'cashSavings', label: 'Cash & Savings', type: 'number', required: true },
+      { id: 'investments', label: 'Investments', type: 'number', required: true },
+      { id: 'retirement', label: 'Retirement Accounts', type: 'number', required: true },
+      { id: 'propertyValue', label: 'Property Value', type: 'number', required: true },
+      { id: 'otherAssets', label: 'Other Assets', type: 'number', required: false },
+      { id: 'mortgage', label: 'Mortgage Balance', type: 'number', required: false },
+      { id: 'carLoan', label: 'Car Loan', type: 'number', required: false },
+      { id: 'creditCard', label: 'Credit Card Debt', type: 'number', required: false },
+      { id: 'studentLoan', label: 'Student Loans', type: 'number', required: false },
+      { id: 'otherDebts', label: 'Other Debts', type: 'number', required: false }
+    ],
+    data: {}
+  },
+  {
+    id: 'goals',
+    title: 'Financial Goals',
+    type: 'financial',
+    required: true,
+    order: 5,
+    fields: [
+      { 
+        id: 'primaryGoal', 
+        label: 'Primary Financial Goal', 
+        type: 'select', 
+        required: true,
+        options: [
+          'Retirement Planning',
+          'Debt Reduction',
+          'Savings',
+          'Investment Growth',
+          'Home Purchase',
+          'Education Funding',
+          'Business Start-up',
+          'Other'
+        ]
+      },
+      { id: 'timeframe', label: 'Goal Timeframe (years)', type: 'number', required: true },
+      { id: 'targetAmount', label: 'Target Amount', type: 'number', required: true },
+      { id: 'currentSavings', label: 'Current Monthly Savings', type: 'number', required: true },
+      { 
+        id: 'riskTolerance', 
+        label: 'Investment Risk Tolerance', 
+        type: 'select', 
+        required: true,
+        options: ['Conservative', 'Moderate', 'Aggressive'] 
+      }
+    ],
+    data: {}
+  }
 ];
 
-
 export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
-  const [currentWorkflow, setCurrentWorkflow] = useState<WorkflowData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [currentWorkflow, setCurrentWorkflow] = useState<WorkflowData | null>({
+    id: 'default', // You might want to generate a unique ID
+    title: 'Financial Information Workflow',
+    advisor_id: 'default', // You might want to set this based on the logged-in advisor
+    status: 'active',
+    sections: defaultSections,
+  });
+  const [loading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Initialize Workflow
-  const initializeWorkflow = useCallback(async () => {
-    if (!user) {
-      setLoading(false);
-      return;
+  const saveProgress = async (sectionId: string, data: Record<string, any>): Promise<void> => {
+    if (!currentWorkflow?.id) {
+      throw new Error('No active workflow');
     }
 
     try {
-      // Fetch active workflow for the advisor
-      const { data, error: fetchError } = await supabase
-        .from('workflows')
-        .select('*')
-        .eq('advisor_id', user.id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
-      if (!data || data.length === 0) {
-        // Create a new workflow if none exist
-        const newWorkflow = {
-          title: 'Financial Profile',
-          advisor_id: user.id,
-          status: 'active' as const,
-          sections: defaultSections,
-        };
-
-        const { data: createdWorkflow, error: createError } = await supabase
-          .from('workflows')
-          .insert([newWorkflow])
-          .select()
-          .single();
-
-        if (createError) throw createError;
-
-        setCurrentWorkflow({ ...createdWorkflow, sections: defaultSections });
-      } else {
-        // Load existing workflow and responses
-        const workflow = data[0];
-        const { data: responses } = await supabase
-          .from('form_responses')
-          .select('*')
-          .eq('workflow_id', workflow.id);
-
-        const sectionsWithData = defaultSections.map((section) => ({
-          ...section,
-          data: responses?.find((r) => r.section_id === section.id)?.data || {},
-        }));
-
-        setCurrentWorkflow({ ...workflow, sections: sectionsWithData });
-      }
-    } catch (err) {
-      console.error('Error initializing workflow:', err);
-      setError(err instanceof Error ? err : new Error('Failed to initialize workflow'));
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    initializeWorkflow();
-  }, [initializeWorkflow]);
-
-  // Save Progress
-  const saveProgress = useCallback(
-    async (sectionId: string, data: Record<string, any>) => {
-      if (!currentWorkflow?.id) {
-        throw new Error('No active workflow');
-      }
-
-      try {
-        // Check if a response exists for this section
-        const { data: existingResponse, error: fetchError } = await supabase
-          .from('form_responses')
-          .select('*')
-          .eq('workflow_id', currentWorkflow.id)
-          .eq('section_id', sectionId)
-          .single();
-
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          throw fetchError; // Throw if not a "not found" error
-        }
-
-        if (existingResponse) {
-          // Update the existing response
-          const { error: updateError } = await supabase
-            .from('form_responses')
-            .update({ data })
-            .eq('id', existingResponse.id);
-
-          if (updateError) throw updateError;
-        } else {
-          // Insert a new response
-          const { error: insertError } = await supabase
-            .from('form_responses')
-            .insert({
-              workflow_id: currentWorkflow.id,
-              section_id: sectionId,
-              data,
-            })
-            .select()
-            .single();
-
-          if (insertError) throw insertError;
-        }
-
-        // Update local state optimistically
-        setCurrentWorkflow((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            sections: prev.sections.map((section) =>
-              section.id === sectionId ? { ...section, data } : section
-            ),
-          };
+      const { error: saveError } = await supabase
+        .from('form_responses')
+        .insert({
+          workflow_id: currentWorkflow.id,
+          section_id: sectionId,
+          data
         });
-      } catch (err) {
-        console.error('Error saving progress:', err);
-        throw err;
-      }
-    },
-    [currentWorkflow]
-  );
+
+      if (saveError) throw saveError;
+
+      setCurrentWorkflow(prev => prev ? {
+        ...prev,
+        sections: prev.sections.map(section =>
+          section.id === sectionId
+            ? { ...section, data: { ...(section.data || {}), ...data } }
+            : section
+        )
+      } : null);
+
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Failed to save progress');
+      setError(err);
+      throw err;
+    }
+  };
 
   return (
     <WorkflowContext.Provider
@@ -194,7 +179,7 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setCurrentWorkflow,
         saveProgress,
         loading,
-        error,
+        error
       }}
     >
       {children}
@@ -202,7 +187,6 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 };
 
-// Custom Hook for Workflow Context
 export const useWorkflow = () => {
   const context = useContext(WorkflowContext);
   if (!context) {
@@ -210,6 +194,7 @@ export const useWorkflow = () => {
   }
   return context;
 };
+
 
 
 /*
