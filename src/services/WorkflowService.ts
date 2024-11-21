@@ -84,29 +84,18 @@ export class WorkflowService {
   }
 
   // Form Response operations
-  static async saveFormResponse(
-    workflowId: string,
-    sectionId: string,
-    data: Record<string, any>
-  ): Promise<FormResponse> {
-    console.log('Saving form response:', { workflowId, sectionId, data });
-
-    const { data: response, error } = await supabase
-      .from('form_responses')
-      .insert({
-        workflow_id: workflowId,
-        section_id: sectionId,
-        data: data
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error saving form response:', error);
-      throw error;
+  static async saveFormResponse(workflowId: string, sectionId: string, data: Record<string, any>) {
+    try {
+      const { data: response, error } = await supabase
+        .from('form_responses')
+        .insert({ workflow_id: workflowId, section_id: sectionId, data })
+        .single();
+      if (error) throw error;
+      return response;
+    } catch (error) {
+      console.error('Failed to save form response:', error);
+      throw new Error('Unable to save data. Please try again.');
     }
-
-    return response;
   }
 
   static async getFormResponses(workflowId: string): Promise<FormResponse[]> {
