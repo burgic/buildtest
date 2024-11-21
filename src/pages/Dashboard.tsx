@@ -16,7 +16,7 @@ import {
 import { supabase } from '../lib/supabase';
 // import type { Database } from '../lib/database.types';
 import type { WorkflowSection } from '../types/workflow.types'
-import { useAuth } from '@/context';
+// import { useAuth } from '@/context';
 import { useNavigate } from 'react-router-dom';
 
 interface SectionData {
@@ -33,50 +33,51 @@ export default function Dashboard() {
   const [responses, setResponses] = useState<SectionData>({});
   const [loading, setLoading] = useState(true);
   const { currentWorkflow } = useWorkflow();
-  const { user } = useAuth();
+  // const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     async function fetchResponses() {
-      if (!currentWorkflow?.id || !user?.email) return;
+      if (!currentWorkflow?.id) return;
       
       try {
         // First get the workflow link
-        const { data: workflowLink, error: linkError } = await supabase
-          .from('workflow_links')
+        const { error: linkError } = await supabase
+          .from('form_responses')
           .select('id')
           .eq('workflow_id', currentWorkflow.id)
-          .eq('client_email', user.email)
-          .single();
+          .order('created_at', {ascending: false})
 
-        if (linkError) throw linkError;
+        
 
         // Then get responses for this link
         const { data, error } = await supabase
           .from('form_responses')
           .select('*')
-          .eq('workflow_link_id', workflowLink.id)
+          .eq('workflow_link_id', currentWorkflow.id)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+          if (error) throw error;
+          if (error) throw linkError;
 
-        const groupedResponses = (data || []).reduce((acc: SectionData, response) => {
-          acc[response.section_id] = {
-            data: response.data
-          };
-          return acc;
-        }, {});
-
-        setResponses(groupedResponses);
-      } catch (error) {
-        console.error('Error fetching responses:', error);
-      } finally {
-        setLoading(false);
+          const groupedResponses = (data || []).reduce<SectionData>((acc, response) => ({
+            ...acc,
+            [response.section_id]: {
+              data: response.data
+            }
+          }), {});
+    
+          setResponses(groupedResponses);
+        } catch (error) {
+          console.error('Error fetching responses:', error);
+        } finally {
+          setLoading(false);
+        }
       }
-    }
-
-    fetchResponses();
-  }, [currentWorkflow, user?.email]);
+    
+      fetchResponses();
+    }, [currentWorkflow]);
+    
 
 
   const calculateProgress = () => {
