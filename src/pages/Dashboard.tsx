@@ -12,9 +12,11 @@ import {
   ChevronRight,
   Clock
 } from 'lucide-react';
-// import type { WorkflowSection } from '../types/workflow.types';
+
 import { supabase } from '../lib/supabase';
-import type { Database } from '../lib/database.types';
+// import type { Database } from '../lib/database.types';
+import type { WorkflowSection } from '../types/workflow.types'
+import { useAuth } from '@/context';
 import { useNavigate } from 'react-router-dom';
 
 interface SectionData {
@@ -25,29 +27,42 @@ interface SectionData {
   };
 }
 
-type FormResponse = Database['public']['Tables']['form_responses']['Row'];
+// type FormResponse = Database['public']['Tables']['form_responses']['Row'];
 
 export default function Dashboard() {
-  const navigate = useNavigate();
-  const { currentWorkflow } = useWorkflow();
   const [responses, setResponses] = useState<SectionData>({});
   const [loading, setLoading] = useState(true);
+  const { currentWorkflow } = useWorkflow();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function fetchResponses() {
-      if (!currentWorkflow?.id) return;
+      if (!currentWorkflow?.id || !user?.email) return;
+      
       try {
+        // First get the workflow link
+        const { data: workflowLink, error: linkError } = await supabase
+          .from('workflow_links')
+          .select('id')
+          .eq('workflow_id', currentWorkflow.id)
+          .eq('client_email', user.email)
+          .single();
+
+        if (linkError) throw linkError;
+
+        // Then get responses for this link
         const { data, error } = await supabase
           .from('form_responses')
           .select('*')
-          .eq('workflow_id', currentWorkflow.id)
+          .eq('workflow_link_id', workflowLink.id)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        const groupedResponses = (data || []).reduce((acc: SectionData, response: FormResponse) => {
+        const groupedResponses = (data || []).reduce((acc: SectionData, response) => {
           acc[response.section_id] = {
-            data: response.data as { [key: string]: string }
+            data: response.data
           };
           return acc;
         }, {});
@@ -61,7 +76,8 @@ export default function Dashboard() {
     }
 
     fetchResponses();
-  }, [currentWorkflow]);
+  }, [currentWorkflow, user?.email]);
+
 
   const calculateProgress = () => {
     if (!currentWorkflow?.sections) return 0;
@@ -181,7 +197,7 @@ export default function Dashboard() {
           
           {/* Section Status */}
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {currentWorkflow?.sections.map((section) => {
+            {currentWorkflow?.sections.map((section: WorkflowSection) => {
               const isComplete = responses[section.id];
               return (
                 <div 

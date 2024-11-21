@@ -1,14 +1,28 @@
 // src/pages/FinancialProfile.tsx
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWorkflow } from '../context/WorkflowContext';
+import type { WorkflowSection, FormField } from '../types/workflow.types';
 
+interface FormData {
+  [key: string]: Record<string, any>;
+}
 
 export default function FinancialProfile() {
   const { currentWorkflow, loading, saveProgress } = useWorkflow();
   const [activeSection, setActiveSection] = useState<string>('');
-  const [formData, setFormData] = useState<Record<string, Record<string, any>>>({});
+  const [formData, setFormData] = useState<FormData>({});
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (currentWorkflow?.sections && currentWorkflow.sections.length > 0) {
+      const initialData = currentWorkflow.sections.reduce<FormData>((acc, section: WorkflowSection) => ({
+        ...acc,
+        [section.id]: section.data || {}
+      }), {});
+      setFormData(initialData);
+      setActiveSection(currentWorkflow.sections[0].id);
+    }
+  }, [currentWorkflow]);
 
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -35,23 +49,8 @@ export default function FinancialProfile() {
     }
   };
 
-  // Initialize form data when workflow loads
-  useEffect(() => {
-    if (currentWorkflow?.sections && currentWorkflow.sections.length > 0) {
-      const initialData = currentWorkflow.sections.reduce((acc, section) => ({
-        ...acc,
-        [section.id]: section.data || {}
-      }), {});
-      setFormData(initialData);
-      setActiveSection(currentWorkflow.sections[0].id);
-    }
-  }, [currentWorkflow]);
+  const currentSection = currentWorkflow?.sections.find((s: WorkflowSection) => s.id === activeSection);
 
-
-  // Debug logging
-  console.log('Current Workflow:', currentWorkflow);
-
-  // Show loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-[#111111] flex items-center justify-center">
@@ -60,37 +59,18 @@ export default function FinancialProfile() {
     );
   }
 
-  // Show message if no workflow or sections
-  if (!currentWorkflow?.sections?.length) {
-    return (
-      <div className="min-h-screen bg-[#111111] flex items-center justify-center text-white">
-        <div className="text-center">
-          <p>No sections available</p>
-        </div>
-      </div>
-    );
-  }
-
-  const currentSection = activeSection 
-    ? currentWorkflow.sections.find(s => s.id === activeSection)
-    : currentWorkflow.sections[0];
-
-  // Debug logging for current section
-  console.log('Current section fields:', currentSection?.fields);
-
   return (
     <div className="min-h-screen bg-[#111111] text-gray-100 p-6">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold mb-6">Financial Profile</h1>
 
-        {/* Section Tabs */}
         <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
-          {currentWorkflow.sections.map(section => (
+          {currentWorkflow?.sections.map((section: WorkflowSection) => (
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
               className={`px-4 py-2 rounded whitespace-nowrap ${
-                (activeSection || currentWorkflow.sections[0].id) === section.id 
+                activeSection === section.id 
                   ? 'bg-blue-600 text-white' 
                   : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
               }`}
@@ -100,15 +80,11 @@ export default function FinancialProfile() {
           ))}
         </div>
 
-        {/* Form Section */}
         {currentSection && (
           <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">{currentSection.title}</h2>
-          {!currentSection.fields ? (
-            <div className="text-red-500">No fields defined for this section</div>
-          ) : (
+            <h2 className="text-xl font-semibold mb-4">{currentSection.title}</h2>
             <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-              {currentSection.fields.map(field => (
+              {currentSection.fields.map((field: FormField) => (
                 <div key={field.id} className="space-y-1">
                   <label 
                     htmlFor={field.id}
@@ -126,29 +102,19 @@ export default function FinancialProfile() {
                     value={formData[activeSection]?.[field.id] || ''}
                     onChange={handleInputChange}
                     required={field.required}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white"
                   />
                 </div>
               ))}
             </form>
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
-        {/* Debug Info */}
-        <div className="mt-8 p-4 bg-gray-800 rounded">
-          <h3 className="text-sm font-semibold mb-2">Debug Info:</h3>
-          <pre className="text-xs text-gray-300">
-            {JSON.stringify({
-              workflowId: currentWorkflow?.id,
-              sectionCount: currentWorkflow?.sections?.length,
-              activeSection,
-              currentSection,
-              formData, 
-              isSaving: saving
-            }, null, 2)}
-          </pre>
-        </div>
+        {saving && (
+          <div className="mt-4 text-sm text-gray-400">
+            Saving changes...
+          </div>
+        )}
       </div>
     </div>
   );

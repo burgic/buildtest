@@ -54,3 +54,38 @@ export interface WorkflowLink {
   expires_at: string;
   created_at: string;
 }
+
+// src/types/workflow.types.ts
+export interface FormField {
+  id: string;
+  label: string;
+  type: 'text' | 'email' | 'tel' | 'number' | 'select' | 'date' | 'file' | 'custom';
+  required: boolean;
+  options?: string[];
+  validation?: {
+    min?: number;
+    max?: number;
+    pattern?: string;
+    message?: string;
+  };
+}
+
+export interface WorkflowSection {
+  id: string;
+  title: string;
+  type: 'personal' | 'financial' | 'documents' | 'goals';
+  fields: FormField[];
+  required: boolean;
+  order: number;
+  data?: Record<string, any>;
+}
+
+export interface Workflow {
+  id: string;
+  title: string;
+  advisor_id: string;
+  status: 'draft' | 'active' | 'completed' | 'archived';
+  sections: WorkflowSection[];
+  created_at?: string;
+  updated_at?: string;
+}
