@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
+
 import { supabase } from '../lib/supabase';
 import type { WorkflowSection } from '../types';
 
@@ -21,8 +22,6 @@ interface WorkflowContextProps {
   error: Error | null;
 }
 
-// Create Context
-const WorkflowContext = createContext<WorkflowContextProps | undefined>(undefined);
 
 // Default Sections Template
 const defaultSections: WorkflowSection[] = [
@@ -129,15 +128,18 @@ const defaultSections: WorkflowSection[] = [
   }
 ];
 
+const WorkflowContext = createContext<WorkflowContextProps | undefined>(undefined);
+
+
 export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentWorkflow, setCurrentWorkflow] = useState<WorkflowData | null>({
-    id: 'default', // You might want to generate a unique ID
+    id: '1', // You might want to generate a unique ID
     title: 'Financial Information Workflow',
-    advisor_id: 'default', // You might want to set this based on the logged-in advisor
+    advisor_id: '1', // You might want to set this based on the logged-in advisor
     status: 'active',
     sections: defaultSections,
   });
-  const [loading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   const saveProgress = async (sectionId: string, data: Record<string, any>): Promise<void> => {
@@ -145,17 +147,39 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       throw new Error('No active workflow');
     }
 
+    setLoading(true);
     try {
-      const { error: saveError } = await supabase
+      // First try to find existing response
+      const { data: existingResponses } = await supabase
         .from('form_responses')
-        .insert({
-          workflow_id: currentWorkflow.id,
-          section_id: sectionId,
-          data
-        });
+        .select('*')
+        .eq('workflow_id', currentWorkflow.id)
+        .eq('section_id', sectionId)
+        .single();
 
-      if (saveError) throw saveError;
+      if (existingResponses) {
+        // Update existing response
+        const { error: updateError } = await supabase
+          .from('form_responses')
+          .update({ data })
+          .eq('workflow_id', currentWorkflow.id)
+          .eq('section_id', sectionId);
 
+        if (updateError) throw updateError;
+      } else {
+        // Insert new response
+        const { error: insertError } = await supabase
+          .from('form_responses')
+          .insert({
+            workflow_id: currentWorkflow.id,
+            section_id: sectionId,
+            data
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      // Update local state
       setCurrentWorkflow(prev => prev ? {
         ...prev,
         sections: prev.sections.map(section =>
@@ -169,6 +193,8 @@ export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const err = error instanceof Error ? error : new Error('Failed to save progress');
       setError(err);
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
