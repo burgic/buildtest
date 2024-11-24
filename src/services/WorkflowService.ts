@@ -2,8 +2,6 @@ import { supabase } from '../lib/supabase';
 import type { WorkflowSection } from '../types/workflow.types';
 import { defaultSections } from '../config/WorkflowConfig';
 
-
-// Type definitions
 export interface Workflow {
   id: string;
   title: string;
@@ -33,39 +31,42 @@ export interface WorkflowLink {
 }
 
 export class WorkflowService {
-  static async initializeClientWorkflow(userId: string, email: string): Promise<Workflow> {
+  static async initializeClientWorkflow(userId: string, email: string): Promise<Workflow[]> {
     try {
-
       console.log('Initializing workflow for advisor:', userId);
-      // First check for existing workflow for this user
-      const { data: existingWorkflow, error: workflowError } = await supabase
+      
+      const { data: existingWorkflows, error: workflowError } = await supabase
         .from('workflows')
         .select('*')
         .eq('advisor_id', userId)
-        .eq('status', 'active')
-        .maybeSingle();
+        .eq('status', 'active');
 
-        if (workflowError) throw workflowError;
-
-      // If we found an existing workflow, check for link
-      if (existingWorkflow) {
-        // Use upsert for workflow link
-        const { error: linkUpsertError } = await supabase
-          .from('workflow_links')
-          .upsert({
-            workflow_id: existingWorkflow.id,
-            client_email: email,
-            status: 'in_progress',
-            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-          });
-  
-        if (linkUpsertError) throw linkUpsertError;
-
-        return existingWorkflow;
+      if (workflowError) {
+        console.error('Error fetching existing workflows:', workflowError);
+        throw workflowError;
       }
 
-      console.log('Creating new workflow for user:', userId);
-      // If no workflow exists, create a new one
+      if (existingWorkflows && existingWorkflows.length > 0) {
+        console.log(`Found ${existingWorkflows.length} existing workflows`);
+
+        // Create or update links for all existing workflows
+        await Promise.all(existingWorkflows.map(async (workflow) => {
+          const { error: linkError } = await supabase
+            .from('workflow_links')
+            .upsert({
+              workflow_id: workflow.id,
+              client_email: email,
+              status: 'in_progress',
+              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            });
+
+          if (linkError) throw linkError;
+        }));
+
+        return existingWorkflows;
+      }
+
+      console.log('Creating new workflow');
       const { data: newWorkflow, error: createError } = await supabase
         .from('workflows')
         .insert({
@@ -77,15 +78,10 @@ export class WorkflowService {
         .select()
         .single();
 
-      if (createError) {
-        console.error('Error creating workflow:', createError);
-        throw createError;
-      }
+      if (createError) throw createError;
+      if (!newWorkflow) throw new Error('Failed to create workflow');
 
-      if (!newWorkflow) {
-        throw new Error('Failed to create workflow');
-      }
-      // Now create the workflow link
+      // Create workflow link
       const { error: linkError } = await supabase
         .from('workflow_links')
         .insert({
@@ -97,38 +93,15 @@ export class WorkflowService {
 
       if (linkError) throw linkError;
 
-      return newWorkflow;
-
+      return [newWorkflow];
     } catch (error) {
-
       console.error('Error initializing client workflow:', error);
       throw error;
     }
   }
 
-
-  static async getWorkflowsByUser(userId: string): Promise<Workflow[]> {
-    try {
-      const { data, error } = await supabase
-        .from('workflows')
-        .select(`
-          *,
-          workflow_links!inner(*)
-        `)
-        .eq('advisor_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching user workflows:', error);
-      throw new Error('Failed to fetch workflows');
-    }
-  }
-
   static async getWorkflowWithResponses(workflowId: string): Promise<Workflow & { responses: Record<string, any> }> {
     try {
-      // Get workflow
       const { data: workflow, error: workflowError } = await supabase
         .from('workflows')
         .select('*')
@@ -136,8 +109,8 @@ export class WorkflowService {
         .single();
 
       if (workflowError) throw workflowError;
+      if (!workflow) throw new Error('Workflow not found');
 
-      // Get responses
       const { data: responses, error: responsesError } = await supabase
         .from('form_responses')
         .select('*')
@@ -145,7 +118,6 @@ export class WorkflowService {
 
       if (responsesError) throw responsesError;
 
-      // Convert responses array to object keyed by section_id
       const responsesMap = (responses || []).reduce((acc, response) => ({
         ...acc,
         [response.section_id]: response.data
@@ -161,73 +133,24 @@ export class WorkflowService {
     }
   }
 
-
-
   static async getWorkflow(workflowId: string): Promise<Workflow> {
     try {
       const { data, error } = await supabase
-      .from('workflows')
-      .select('*')
-      .eq('id', workflowId)
-      .single();
-
-    if (error) throw error;
-    return data;
-    } catch (error) {
-        console.error('Error updating workflow:', error);
-        throw new Error('Failed to update workflow');
-    }
-  }
-
-  static async getWorkflowByAdvisor(advisorId: string): Promise<Workflow[]> {
-    try {
-    const { data, error } = await supabase
-      .from('workflows')
-      .select('*')
-      .eq('advisor_id', advisorId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Error fetching advisor workflows:', error);
-    throw new Error('Failed to fetch workflows');
-  }
-
-  }
-
-  static async updateWorkflow(workflowId: string, updates: Partial<Workflow>): Promise<Workflow> {
-    try {
-      const { data, error } = await supabase
         .from('workflows')
-        .update(updates)
+        .select('*')
         .eq('id', workflowId)
-        .select()
         .single();
 
       if (error) throw error;
+      if (!data) throw new Error('Workflow not found');
+      
       return data;
     } catch (error) {
-      console.error('Error updating workflow:', error);
-      throw new Error('Failed to update workflow');
+      console.error('Error fetching workflow:', error);
+      throw new Error('Failed to fetch workflow');
     }
   }
 
-  static async archiveWorkflow(workflowId: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('workflows')
-        .update({ status: 'archived' })
-        .eq('id', workflowId);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error archiving workflow:', error);
-      throw new Error('Failed to archive workflow');
-    }
-  }
-
-  // Form Response operations
   static async saveFormResponse(
     workflowId: string,
     sectionId: string,
@@ -336,29 +259,66 @@ export class WorkflowService {
 
   static async getWorkflowByLinkId(linkId: string): Promise<Workflow | null> {
     try {
-      const { data: link, error: linkError } = await supabase
+      // Get the workflow link
+      const { data: linkDataArray, error: linkError } = await supabase
         .from('workflow_links')
         .select('workflow_id, status, expires_at')
-        .eq('id', linkId)
-        .single();
+        .eq('id', linkId);
 
-      if (linkError) throw linkError;
+      if (linkError) {
+        console.error('Error fetching workflow link:', linkError);
+        throw linkError;
+      }
 
-      // Check if link is valid
-      if (!link || new Date(link.expires_at) < new Date() || link.status === 'completed') {
+      // Check if we got any links and get the first valid one
+      const linkData = linkDataArray?.[0];
+      if (!linkData || 
+          new Date(linkData.expires_at) < new Date() || 
+          linkData.status === 'completed') {
+        console.log('No valid workflow link found');
         return null;
       }
 
-      const { data: workflow, error: workflowError } = await supabase
+      // Get the workflow
+      const { data: workflowDataArray, error: workflowError } = await supabase
         .from('workflows')
-        .select('*')
-        .eq('id', link.workflow_id)
-        .single();
+        .select(`
+          id,
+          title,
+          advisor_id,
+          status,
+          sections,
+          created_at,
+          updated_at
+        `)
+        .eq('id', linkData.workflow_id);
 
-      if (workflowError) throw workflowError;
+      if (workflowError) {
+        console.error('Error fetching workflow:', workflowError);
+        throw workflowError;
+      }
+
+      const workflowData = workflowDataArray?.[0];
+      if (!workflowData) {
+        console.log('No workflow found for link');
+        return null;
+      }
+
+      // Return the workflow with proper typing
+      const workflow: Workflow = {
+        id: workflowData.id,
+        title: workflowData.title,
+        advisor_id: workflowData.advisor_id,
+        status: workflowData.status,
+        sections: workflowData.sections,
+        created_at: workflowData.created_at,
+        updated_at: workflowData.updated_at
+      };
+
       return workflow;
+
     } catch (error) {
-      console.error('Error fetching workflow by link:', error);
+      console.error('Error in getWorkflowByLinkId:', error);
       throw new Error('Failed to fetch workflow');
     }
   }
@@ -374,6 +334,9 @@ export class WorkflowService {
         .eq('id', linkId);
 
       if (error) throw error;
+      console.error('Error updating workflow link:', error);
+        throw error;
+
     } catch (error) {
       console.error('Error updating workflow link:', error);
       throw new Error('Failed to update workflow link');
