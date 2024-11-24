@@ -36,43 +36,33 @@ export class WorkflowService {
   static async initializeClientWorkflow(userId: string, email: string): Promise<Workflow> {
     try {
       // First check for existing workflow for this user
-      const { data: existingWorkflow, error: fetchError } = await supabase
+      const { data: existingWorkflow, error: workflowError } = await supabase
         .from('workflows')
         .select('*')
-        .eq('advisor_id', userId)
+        .eq('advisor_id', email)
         .eq('status', 'active')
         .maybeSingle();
 
-      if (fetchError) throw fetchError;
+        if (workflowError) throw workflowError;
 
       // If we found an existing workflow, check for link
       if (existingWorkflow) {
-        const { data: existingLink, error: linkError } = await supabase
+        // Use upsert for workflow link
+        const { error: linkUpsertError } = await supabase
           .from('workflow_links')
-          .select('*')
-          .eq('workflow_id', existingWorkflow.id)
-          .eq('client_email', email)
-          .maybeSingle();
-
-        if (linkError && linkError.code !== 'PGRST116') throw linkError;
-
-        // If no link exists, create one
-        if (!existingLink) {
-          const { error: createLinkError } = await supabase
-            .from('workflow_links')
-            .insert({
-              workflow_id: existingWorkflow.id,
-              client_email: email,
-              status: 'in_progress',
-              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-            });
-
-          if (createLinkError) throw createLinkError;
-        }
+          .upsert({
+            workflow_id: existingWorkflow.id,
+            client_email: email,
+            status: 'in_progress',
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          });
+  
+        if (linkUpsertError) throw linkUpsertError;
 
         return existingWorkflow;
       }
 
+      console.log('Creating new workflow for user:', userId);
       // If no workflow exists, create a new one
       const { data: newWorkflow, error: createError } = await supabase
         .from('workflows')
@@ -85,8 +75,14 @@ export class WorkflowService {
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        console.error('Error creating workflow:', createError);
+        throw createError;
+      }
 
+      if (!newWorkflow) {
+        throw new Error('Failed to create workflow');
+      }
       // Now create the workflow link
       const { error: linkError } = await supabase
         .from('workflow_links')
@@ -100,7 +96,9 @@ export class WorkflowService {
       if (linkError) throw linkError;
 
       return newWorkflow;
+
     } catch (error) {
+
       console.error('Error initializing client workflow:', error);
       throw error;
     }
