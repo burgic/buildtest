@@ -1,26 +1,16 @@
 import React, { useState, useEffect, memo } from 'react';
-import { 
-  Upload,
-  ChevronRight,
-  CheckCircle,
-  AlertCircle 
-} from 'lucide-react';
+import { Upload, ChevronRight, CheckCircle, AlertCircle } from 'lucide-react';
 import { useWorkflow } from '../../context/WorkflowContext';
 import { AutosaveForm } from '../forms/AutosaveForm';
 import FormSection from '../forms/FormSection';
 import type { WorkflowSection } from '../../types/workflow.types';
-
 
 interface ClientPortalProps {
   sections?: WorkflowSection[];
   onSave?: (sectionId: string, data: Record<string, any>) => Promise<void>;
 }
 
-
-const ClientPortal: React.FC<ClientPortalProps> = ({ 
-  sections = [], 
-  onSave 
-}) => {
+const ClientPortal: React.FC<ClientPortalProps> = ({ sections = [], onSave }) => {
   const { currentWorkflow, saveProgress } = useWorkflow();
   const [activeSection, setActiveSection] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -31,28 +21,24 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
     ? sections 
     : currentWorkflow?.sections || [];
 
-    useEffect(() => {
-      const savedSection = localStorage.getItem('activeSection');
-      if (savedSection && workflowSections.some(s => s.id === savedSection)) {
-        setActiveSection(savedSection);
-      } else if (workflowSections.length > 0) {
-        setActiveSection(workflowSections[0].id);
-      }
-    }, [workflowSections]);
-    
-  
-    useEffect(() => {
-      if (sections.length > 0 && !activeSection) {
-        setActiveSection(workflowSections[0].id);
-      }
-    }, [sections, activeSection]);
+  // Initialize active section from localStorage or default to first section
+  useEffect(() => {
+    if (workflowSections.length === 0) return;
 
-    useEffect(() => {
-      if (activeSection) {
-        localStorage.setItem('activeSection', activeSection);
-      }
-    }, [activeSection]);
-    
+    const savedSection = localStorage.getItem('activeSection');
+    if (savedSection && workflowSections.some(s => s.id === savedSection)) {
+      setActiveSection(savedSection);
+    } else {
+      setActiveSection(workflowSections[0].id);
+    }
+  }, [workflowSections]);
+
+  // Save active section to localStorage when it changes
+  useEffect(() => {
+    if (activeSection) {
+      localStorage.setItem('activeSection', activeSection);
+    }
+  }, [activeSection]);
 
   const currentSection = workflowSections.find(s => s.id === activeSection);
 
@@ -62,19 +48,16 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
 
   const handleSave = async (sectionId: string, data: Record<string, any>) => {
     try {
-      setError(null);
       setSavingStates(prev => ({ ...prev, [sectionId]: true }));
-      
       if (onSave) {
         await onSave(sectionId, data);
       } else if (saveProgress) {
         await saveProgress(sectionId, data);
       }
+      setSavingStates(prev => ({ ...prev, [sectionId]: false }));
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save progress';
-      setError(errorMessage);
-      throw err;
-    } finally {
+      console.error('Error saving section:', sectionId, err);
+      setError(err instanceof Error ? err.message : 'Failed to save section');
       setSavingStates(prev => ({ ...prev, [sectionId]: false }));
     }
   };
@@ -103,7 +86,7 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
         </div>
 
         <div className="grid grid-cols-12 gap-6">
-          {/* Section Navigation */}
+          {/* Navigation Sidebar */}
           <div className="col-span-3">
             <div className="space-y-1">
               {workflowSections.map((section) => {
@@ -124,18 +107,22 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
                       {isComplete ? (
                         <CheckCircle className="w-4 h-4 text-green-500" />
                       ) : (
-                        <div className={`w-4 h-4 rounded-full border ${isActive ? 'border-white' : 'border-gray-600'}`} />
+                        <div className={`w-4 h-4 rounded-full border ${
+                          isActive ? 'border-white' : 'border-gray-600'
+                        }`} />
                       )}
                       <span>{section.title}</span>
                     </div>
-                    <ChevronRight className={`w-4 h-4 transition-transform ${isActive ? 'rotate-90' : 'rotate-0'}`} />
+                    <ChevronRight className={`w-4 h-4 transition-transform ${
+                      isActive ? 'rotate-90' : 'rotate-0'
+                    }`} />
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Form Section */}
+          {/* Form Content */}
           <div className="col-span-9">
             <div className="bg-[#1D1D1F] rounded-xl p-6">
               {currentSection && (
@@ -148,11 +135,11 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
                       <span className="text-sm text-gray-400">Saving...</span>
                     )}
                   </div>
-                  
+
                   <AutosaveForm
-                    sectionId={activeSection}
-                    initialData={currentSection?.data}
-                    onSave={(data) => handleSave(activeSection, data)}
+                    sectionId={currentSection.id}
+                    initialData={currentSection.data}
+                    onSave={(data) => handleSave(currentSection.id, data)}
                   >
                     <div className="grid grid-cols-2 gap-6">
                       {currentSection.fields?.map((field) => (
@@ -195,11 +182,14 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
   );
 };
 
-const MemorizedClientPortal = memo(ClientPortal)
+export default memo(ClientPortal);
 
-export default MemorizedClientPortal;
+
+
+//////
 
 /*
+
 import React, { useState, useEffect } from 'react';
 import { Upload } from 'lucide-react';
 import { useWorkflow } from '../../context/WorkflowContext';

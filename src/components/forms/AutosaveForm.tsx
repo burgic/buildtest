@@ -2,6 +2,12 @@ import React, { useState, useCallback, useRef } from 'react';
 import debounce from 'lodash/debounce';
 import { useWorkflow } from '../../context/WorkflowContext';
 
+interface FormInputProps {
+  name: string;
+  value?: string | number;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+}
+
 interface AutosaveFormProps {
   sectionId: string;
   initialData?: Record<string, any>;
@@ -16,13 +22,11 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   children,
   onSave
 }) => {
-  // const memorizedInitialData = useMemo(() => initialData, [initialData]); // Memoize data
-  const formRef = useRef<Record<string, any>>({ ...initialData }); // Ref for form data
+  const formRef = useRef<Record<string, any>>({ ...initialData });
   const { saveProgress } = useWorkflow();
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
 
   const debouncedSave = useCallback(
     debounce(async (data: Record<string, any>) => {
@@ -41,7 +45,6 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     }, 1500),
     [sectionId, saveProgress, onSave]
   );
-  
 
   const handleInputChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -49,40 +52,53 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     const { name, value, type } = event.target;
     const newValue = type === 'number' ? (value ? parseFloat(value) : '') : value;
     
-    // Update ref data
-    formRef.current[name] = newValue;
+    formRef.current = {
+      ...formRef.current,
+      [name]: newValue
+    };
 
-    debouncedSave({...formRef.current});
+    debouncedSave({ ...formRef.current });
   };
 
-  // Make sure to pass the correct props to children
-  const formChildren = React.Children.map(children, child => {
-    if (React.isValidElement(child)) {
-      return React.cloneElement(child, {
-        ...child.props,
-        value: formRef.current[child.props.name] || '',
-        onChange: handleInputChange
-      });
-    }
-    return child;
-  });
+  const renderChildren = () => {
+    return React.Children.map(children, child => {
+      if (!React.isValidElement(child)) {
+        return child;
+      }
+
+      // Type guard to check if the child has the required props
+      if ('name' in child.props) {
+        return React.cloneElement(child as React.ReactElement<FormInputProps>, {
+          ...child.props,
+          value: formRef.current[child.props.name] || '',
+          onChange: handleInputChange
+        });
+      }
+
+      return child;
+    });
+  };
 
   return (
     <div className="space-y-4">
       <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-        {formChildren}
+        {renderChildren()}
       </form>
-      {error && (
-        <div className="text-red-500 text-sm">{error}</div>
-      )}
-      {saving && (
-        <div className="text-gray-400 text-sm">Saving...</div>
-      )}
-      {lastSaved && !saving && (
-        <div className="text-gray-400 text-sm">
-          Last saved: {lastSaved.toLocaleTimeString()}
-        </div>
-      )}
+      
+      {/* Status indicators */}
+      <div className="space-y-2">
+        {error && (
+          <div className="text-red-500 text-sm">{error}</div>
+        )}
+        {saving && (
+          <div className="text-gray-400 text-sm">Saving...</div>
+        )}
+        {lastSaved && !saving && (
+          <div className="text-gray-400 text-sm">
+            Last saved: {lastSaved.toLocaleTimeString()}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
