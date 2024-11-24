@@ -35,11 +35,13 @@ export interface WorkflowLink {
 export class WorkflowService {
   static async initializeClientWorkflow(userId: string, email: string): Promise<Workflow> {
     try {
+
+      console.log('Initializing workflow for advisor:', userId);
       // First check for existing workflow for this user
       const { data: existingWorkflow, error: workflowError } = await supabase
         .from('workflows')
         .select('*')
-        .eq('advisor_id', email)
+        .eq('advisor_id', userId)
         .eq('status', 'active')
         .maybeSingle();
 
