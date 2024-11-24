@@ -1,15 +1,20 @@
 import { createClient } from '@supabase/supabase-js'
 import { Database } from './database.types'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_DATABASE_URL || 'Not defined'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "Not defined"
 
-console.log('Supabase URL configured:', !!supabaseUrl)
-console.log('Supabase Anon Key configured:', !!supabaseAnonKey)
+console.log('Supabase URL:', supabaseUrl);
+console.log('Supabase Anon Key:', supabaseAnonKey);
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase environment variables')
   throw new Error('Missing Supabase environment variables')
+}
+
+if (supabaseUrl === 'Not defined' || supabaseAnonKey === 'Not defined') {
+  console.error('Supabase environment variables are missing.');
+  throw new Error('Missing Supabase environment variables');
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
