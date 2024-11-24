@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import debounce from 'lodash/debounce';
 import { useWorkflow } from '../../context/WorkflowContext';
 
@@ -16,12 +16,13 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   children,
   onSave
 }) => {
-  const [formData, setFormData] = useState<Record<string, any>>(initialData);
+  // const memorizedInitialData = useMemo(() => initialData, [initialData]); // Memoize data
+  const formRef = useRef<Record<string, any>>({ ...initialData }); // Ref for form data
+  const { saveProgress } = useWorkflow();
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   
-  const { saveProgress } = useWorkflow();
 
   const debouncedSave = useCallback(
     debounce(async (data: Record<string, any>) => {
@@ -40,6 +41,7 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     }, 1500),
     [sectionId, saveProgress, onSave]
   );
+  
 
   const handleInputChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -47,14 +49,10 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     const { name, value, type } = event.target;
     const newValue = type === 'number' ? (value ? parseFloat(value) : '') : value;
     
-    setFormData(prev => {
-      const newData = {
-        ...prev,
-        [name]: newValue
-      };
-      debouncedSave(newData);
-      return newData;
-    });
+    // Update ref data
+    formRef.current[name] = newValue;
+
+    debouncedSave({...formRef.current});
   };
 
   // Make sure to pass the correct props to children
@@ -62,7 +60,7 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     if (React.isValidElement(child)) {
       return React.cloneElement(child, {
         ...child.props,
-        value: formData[child.props.name] || '',
+        value: formRef.current[child.props.name] || '',
         onChange: handleInputChange
       });
     }

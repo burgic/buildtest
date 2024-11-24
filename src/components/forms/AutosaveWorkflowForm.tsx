@@ -51,6 +51,13 @@ export function AutosaveWorkflowForm({
     }));
   };
 
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    }
+  }, [initialData]);
+
+
   const renderField = (field: any) => {
     switch (field.type) {
       case 'text':
