@@ -35,37 +35,48 @@ export class WorkflowService {
     try {
       console.log('Initializing workflow for advisor:', userId);
       
+      // First, check for existing workflows
       const { data: existingWorkflows, error: workflowError } = await supabase
         .from('workflows')
         .select('*')
         .eq('advisor_id', userId)
         .eq('status', 'active');
 
-      if (workflowError) {
-        console.error('Error fetching existing workflows:', workflowError);
-        throw workflowError;
-      }
+      if (workflowError) throw workflowError;
 
       if (existingWorkflows && existingWorkflows.length > 0) {
         console.log(`Found ${existingWorkflows.length} existing workflows`);
 
-        // Create or update links for all existing workflows
-        await Promise.all(existingWorkflows.map(async (workflow) => {
-          const { error: linkError } = await supabase
+        // Check for existing link before creating a new one
+        for (const workflow of existingWorkflows) {
+          const { data: existingLink } = await supabase
             .from('workflow_links')
-            .upsert({
-              workflow_id: workflow.id,
-              client_email: email,
-              status: 'in_progress',
-              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-            });
+            .select('*')
+            .eq('workflow_id', workflow.id)
+            .eq('client_email', email)
+            .single();
 
-          if (linkError) throw linkError;
-        }));
+          if (!existingLink) {
+            // Only create a new link if one doesn't exist
+            const { error: linkError } = await supabase
+              .from('workflow_links')
+              .insert({
+                workflow_id: workflow.id,
+                client_email: email,
+                status: 'in_progress',
+                expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+              });
+
+            if (linkError && linkError.code !== '23505') { // Ignore unique constraint violations
+              throw linkError;
+            }
+          }
+        }
 
         return existingWorkflows;
       }
 
+      // Create new workflow if none exists
       console.log('Creating new workflow');
       const { data: newWorkflow, error: createError } = await supabase
         .from('workflows')
@@ -81,7 +92,7 @@ export class WorkflowService {
       if (createError) throw createError;
       if (!newWorkflow) throw new Error('Failed to create workflow');
 
-      // Create workflow link
+      // Create initial workflow link
       const { error: linkError } = await supabase
         .from('workflow_links')
         .insert({
@@ -91,12 +102,21 @@ export class WorkflowService {
           expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         });
 
-      if (linkError) throw linkError;
+      if (linkError && linkError.code !== '23505') { // Ignore unique constraint violations
+        throw linkError;
+      }
 
       return [newWorkflow];
     } catch (error) {
-      console.error('Error initializing client workflow:', error);
-      throw error;
+      console.error('Error in initializeClientWorkflow:', error);
+      // Return existing workflows even if link creation fails
+      const { data: fallbackWorkflows } = await supabase
+        .from('workflows')
+        .select('*')
+        .eq('advisor_id', userId)
+        .eq('status', 'active');
+        
+      return fallbackWorkflows || [];
     }
   }
 
