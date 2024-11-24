@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase';
-
 import type { WorkflowSection } from '../types/workflow.types';
 
 
@@ -23,25 +22,74 @@ export interface FormResponse {
   updated_at: string;
 }
 
-export class WorkflowService {
-  static async createWorkflow(advisorId: string, title: string): Promise<Workflow> {
-    const { data, error } = await supabase
-      .from('workflows')
-      .insert({
-        advisor_id: advisorId,
-        title: title,
-        status: 'draft',
-        sections: []
-      })
-      .select()
-      .single();
+export interface WorkflowLink {
+  id: string;
+  workflow_id: string;
+  client_email: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  expires_at: string;
+  created_at: string;
+}
 
-    if (error) throw error;
-    return data;
+export class WorkflowService {
+  // Client Workflow Methods
+  static async initializeClientWorkflow(userId: string, email: string): Promise<Workflow> {
+    try {
+      const { data: existingLinks, error: linkError } = await supabase
+        .from('workflow_links')
+        .select('workflow_id')
+        .eq('client_email', email)
+        .eq('status', 'in_progress')
+        .maybeSingle();
+
+      if (linkError) throw linkError;
+
+      if (existingLinks?.workflow_id) {
+        const { data: workflow, error: fetchError } = await supabase
+          .from('workflows')
+          .select('*')
+          .eq('id', existingLinks.workflow_id)
+          .single();
+
+        if (fetchError) throw fetchError;
+        if (workflow) return workflow;
+      }
+
+      const { data: newWorkflow, error: createError } = await supabase
+        .from('workflows')
+        .insert({
+          advisor_id: userId,
+          title: 'Financial Information Workflow',
+          status: 'active',
+          sections: []
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      const { error: linkCreateError } = await supabase
+        .from('workflow_links')
+        .insert({
+          workflow_id: newWorkflow.id,
+          client_email: email,
+          status: 'in_progress',
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        });
+
+      if (linkCreateError) throw linkCreateError;
+
+      return newWorkflow;
+    } catch (error) {
+      console.error('Error initializing client workflow:', error);
+      throw new Error('Failed to initialize workflow');
+    }
   }
 
+
   static async getWorkflow(workflowId: string): Promise<Workflow> {
-    const { data, error } = await supabase
+    try {
+      const { data, error } = await supabase
       .from('workflows')
       .select('*')
       .eq('id', workflowId)
@@ -49,9 +97,14 @@ export class WorkflowService {
 
     if (error) throw error;
     return data;
+    } catch (error) {
+        console.error('Error updating workflow:', error);
+        throw new Error('Failed to update workflow');
+    }
   }
 
   static async getWorkflowByAdvisor(advisorId: string): Promise<Workflow[]> {
+    try {
     const { data, error } = await supabase
       .from('workflows')
       .select('*')
@@ -60,120 +113,202 @@ export class WorkflowService {
 
     if (error) throw error;
     return data;
+  } catch (error) {
+    console.error('Error fetching advisor workflows:', error);
+    throw new Error('Failed to fetch workflows');
+  }
+
   }
 
   static async updateWorkflow(workflowId: string, updates: Partial<Workflow>): Promise<Workflow> {
-    const { data, error } = await supabase
-      .from('workflows')
-      .update(updates)
-      .eq('id', workflowId)
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('workflows')
+        .update(updates)
+        .eq('id', workflowId)
+        .select()
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating workflow:', error);
+      throw new Error('Failed to update workflow');
+    }
   }
 
   static async archiveWorkflow(workflowId: string): Promise<void> {
-    const { error } = await supabase
-      .from('workflows')
-      .update({ status: 'archived' })
-      .eq('id', workflowId);
+    try {
+      const { error } = await supabase
+        .from('workflows')
+        .update({ status: 'archived' })
+        .eq('id', workflowId);
 
-    if (error) throw error;
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error archiving workflow:', error);
+      throw new Error('Failed to archive workflow');
+    }
   }
 
   // Form Response operations
-  static async saveFormResponse(workflowId: string, sectionId: string, data: Record<string, any>) {
+  static async saveFormResponse(
+    workflowId: string,
+    sectionId: string,
+    data: Record<string, any>
+  ): Promise<void> {
     try {
-      const { data: response, error } = await supabase
+      const { data: existing, error: fetchError } = await supabase
         .from('form_responses')
-        .insert({ workflow_id: workflowId, section_id: sectionId, data })
-        .single();
-      if (error) throw error;
-      return response;
+        .select('id')
+        .eq('workflow_id', workflowId)
+        .eq('section_id', sectionId)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
+      if (existing?.id) {
+        const { error: updateError } = await supabase
+          .from('form_responses')
+          .update({ data })
+          .eq('id', existing.id);
+
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('form_responses')
+          .insert({
+            workflow_id: workflowId,
+            section_id: sectionId,
+            data
+          });
+
+        if (insertError) throw insertError;
+      }
     } catch (error) {
-      console.error('Failed to save form response:', error);
-      throw new Error('Unable to save data. Please try again.');
+      console.error('Error saving form response:', error);
+      throw new Error('Failed to save form response');
     }
   }
 
-  static async getFormResponses(workflowId: string): Promise<FormResponse[]> {
-    const { data, error } = await supabase
-      .from('form_responses')
-      .select('*')
-      .eq('workflow_id', workflowId)
-      .order('created_at', { ascending: true });
+  static async getFormResponses(workflowId: string): Promise<Record<string, any>> {
+    try {
+      const { data, error } = await supabase
+        .from('form_responses')
+        .select('*')
+        .eq('workflow_id', workflowId);
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+
+      return (data || []).reduce((acc, response) => {
+        acc[response.section_id] = response.data;
+        return acc;
+      }, {} as Record<string, any>);
+    } catch (error) {
+      console.error('Error fetching form responses:', error);
+      throw new Error('Failed to fetch form responses');
+    }
   }
 
   static async getLatestFormResponses(workflowId: string): Promise<Record<string, FormResponse>> {
-    const { data, error } = await supabase
-      .from('form_responses')
-      .select('*')
-      .eq('workflow_id', workflowId)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('form_responses')
+        .select('*')
+        .eq('workflow_id', workflowId)
+        .order('created_at', { ascending: false });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    // Group by section_id and take the latest response for each section
-    const latestResponses = data.reduce((acc, response) => {
-      if (!acc[response.section_id] || 
-          new Date(response.created_at) > new Date(acc[response.section_id].created_at)) {
-        acc[response.section_id] = response;
-      }
-      return acc;
-    }, {} as Record<string, FormResponse>);
+      // Group by section_id and take the latest response for each section
+      const latestResponses = data.reduce((acc, response) => {
+        if (!acc[response.section_id] || 
+            new Date(response.created_at) > new Date(acc[response.section_id].created_at)) {
+          acc[response.section_id] = response;
+        }
+        return acc;
+      }, {} as Record<string, FormResponse>);
 
-    return latestResponses;
+      return latestResponses;
+    } catch (error) {
+      console.error('Error fetching latest form responses:', error);
+      throw new Error('Failed to fetch latest responses');
+    }
   }
 
-  // Workflow Link operations
-  static async createWorkflowLink(workflowId: string, clientEmail: string): Promise<string> {
-    const { data, error } = await supabase
-      .from('workflow_links')
-      .insert({
-        workflow_id: workflowId,
-        client_email: clientEmail,
-        status: 'pending',
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
-      })
-      .select()
-      .single();
+  // Workflow Link Methods
+  static async createWorkflowLink(workflowId: string, clientEmail: string): Promise<WorkflowLink> {
+    try {
+      const { data, error } = await supabase
+        .from('workflow_links')
+        .insert({
+          workflow_id: workflowId,
+          client_email: clientEmail,
+          status: 'pending',
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        })
+        .select()
+        .single();
 
-    if (error) throw error;
-    return data.id;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating workflow link:', error);
+      throw new Error('Failed to create workflow link');
+    }
   }
 
   static async getWorkflowByLinkId(linkId: string): Promise<Workflow | null> {
-    const { data: link, error: linkError } = await supabase
-      .from('workflow_links')
-      .select('workflow_id, status, expires_at')
-      .eq('id', linkId)
-      .single();
+    try {
+      const { data: link, error: linkError } = await supabase
+        .from('workflow_links')
+        .select('workflow_id, status, expires_at')
+        .eq('id', linkId)
+        .single();
 
-    if (linkError) throw linkError;
+      if (linkError) throw linkError;
 
-    if (!link || new Date(link.expires_at) < new Date() || link.status === 'completed') {
-      return null;
+      // Check if link is valid
+      if (!link || new Date(link.expires_at) < new Date() || link.status === 'completed') {
+        return null;
+      }
+
+      const { data: workflow, error: workflowError } = await supabase
+        .from('workflows')
+        .select('*')
+        .eq('id', link.workflow_id)
+        .single();
+
+      if (workflowError) throw workflowError;
+      return workflow;
+    } catch (error) {
+      console.error('Error fetching workflow by link:', error);
+      throw new Error('Failed to fetch workflow');
     }
-
-    const { data: workflow, error: workflowError } = await supabase
-      .from('workflows')
-      .select('*')
-      .eq('id', link.workflow_id)
-      .single();
-
-    if (workflowError) throw workflowError;
-    return workflow;
   }
+
+  static async updateWorkflowLink(
+    linkId: string, 
+    updates: Partial<Pick<WorkflowLink, 'status' | 'expires_at'>>
+  ): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('workflow_links')
+        .update(updates)
+        .eq('id', linkId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating workflow link:', error);
+      throw new Error('Failed to update workflow link');
+    }
+  }
+
 
   // Real-time subscription setup
   static subscribeToFormResponses(
     workflowId: string,
-    callback: (response: FormResponse) => void
+    callback: (response: any) => void
   ) {
     return supabase
       .channel(`workflow-${workflowId}`)

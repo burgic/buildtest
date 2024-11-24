@@ -1,10 +1,11 @@
 import React, { createContext, useEffect, useContext, useState } from 'react';
 import { useAuth } from './AuthProvider';
-import { supabase } from '../lib/supabase';
-import type { WorkflowSection, Workflow } from '../types/workflow.types';
+import { WorkflowService } from '../services/WorkflowService';
+import type { WorkflowSection } from '../types/workflow.types';
 // import { Database } from '../lib/database.types'
 
-// Define Workflow Data Types
+
+// Define WorkflowData interface
 interface WorkflowData {
   id: string;
   title: string;
@@ -18,21 +19,18 @@ interface WorkflowData {
 interface WorkflowState {
   currentWorkflow: WorkflowData | null;
   currentWorkflowLink: string | null;
+  responses: Record<string, any>;
   loading: boolean;
   error: Error | null;
 }
 
-
-interface WorkflowContextProps {
-  currentWorkflow: WorkflowData | null;
+interface WorkflowContextProps extends WorkflowState {
   setCurrentWorkflow: (workflow: WorkflowData | null) => void;
   saveProgress: (sectionId: string, data: Record<string, any>) => Promise<void>;
-  loading: boolean;
-  error: Error | null;
-  currentWorkflowLink: string | null; // {{ edit_1 }} Add this line
 }
 
 const WorkflowContext = createContext<WorkflowContextProps | undefined>(undefined);
+
 
 // Default Sections Template
 const defaultSections: WorkflowSection[] = [
@@ -140,159 +138,135 @@ const defaultSections: WorkflowSection[] = [
 ];
 
 
-export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<WorkflowState>({
     currentWorkflow: null,
     currentWorkflowLink: null,
+    responses: {},
     loading: true,
     error: null
   });
-  
+
   const { user } = useAuth();
 
-  useEffect(() => {
-    const initializeWorkflow = async () => {
-      if (!user) return;
-      
-      try {
-        // First get or create workflow
-        let workflow: Workflow;
-        const { data: existingWorkflows, error: fetchError } = await supabase
-          .from('workflows')
-          .select('*')
-          .eq('advisor_id', user.id)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (fetchError) throw fetchError;
-
-        if (existingWorkflows && existingWorkflows.length > 0) {
-          workflow = existingWorkflows[0];
-        } else {
-          const { data: newWorkflow, error: createError } = await supabase
-            .from('workflows')
-            .insert({
-              advisor_id: user.id,
-              title: 'Financial Information Workflow',
-              sections: defaultSections,
-              status: 'active'
-            })
-            .select()
-            .single();
-
-          if (createError) throw createError;
-          workflow = newWorkflow;
-        }
-
-        // Then get or create workflow link
-        if (user?.email) {
-        const { data: existingLink, error: linkError } = await supabase
-          .from('workflow_links')
-          .select('*')
-          .eq('workflow_id', workflow.id)
-          .eq('client_email', user.email)
-          .eq('status', 'in_progress')
-          .single();
-        
-
-        if (linkError && linkError.code !== 'PGRST116') throw linkError;
-
-        let workflowLink = existingLink;
-        
-
-        if (!workflowLink) {
-          const { data: newLink, error: createLinkError } = await supabase
-            .from('workflow_links')
-            .insert({
-              workflow_id: workflow.id,
-              client_email: user.email,
-              status: 'in_progress',
-              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-            })
-            .select()
-            .single();
-
-          if (createLinkError) throw createLinkError;
-          workflowLink = newLink;
-        } else {
-          workflowLink = existingLink;
-        }
-      }
-
-        setState((prev: WorkflowState) => ({
-          ...prev,
-          currentWorkflow: workflow,
-          currentWorkflowLink: workflow.id,
-          loading: false,
-          error: null
-        }));
-
-      } catch (err) {
-        setState((prev: WorkflowState) => ({
-          ...prev,
-          error: err instanceof Error ? err : new Error('Failed to initialize workflow'),
-          loading: false
-        }));
-      }
-    };
-
-    initializeWorkflow();
-  }, [user]);
+  const setCurrentWorkflow = (workflow: WorkflowData | null) => {
+    setState(prev => ({ ...prev, currentWorkflow: workflow }));
+  };
 
   const saveProgress = async (sectionId: string, data: Record<string, any>) => {
-    if (!state.currentWorkflowLink) throw new Error('No active workflow link');
+    if (!state.currentWorkflow?.id) {
+      throw new Error('No active workflow');
+    }
 
     try {
-      const { error } = await supabase
-        .from('form_responses')
-        .insert({
-          workflow_id: state.currentWorkflow!.id,
-          section_id: sectionId,
-          data
-        });
+      await WorkflowService.saveFormResponse(
+        state.currentWorkflow.id,
+        sectionId,
+        data
+      );
 
-      if (error) throw error;
-
-      // Update local state
-      setState((prev: WorkflowState) => ({
+      setState(prev => ({
         ...prev,
-        currentWorkflow: prev.currentWorkflow ? {
-          ...prev.currentWorkflow,
-          sections: prev.currentWorkflow.sections.map((section: WorkflowSection) =>
-            section.id === sectionId
-              ? { ...section, data: { ...(section.data || {}), ...data } }
-              : section
-          )
-        } : null
+        responses: {
+          ...prev.responses,
+          [sectionId]: data
+        }
       }));
-    } catch (err) {
-      console.error('Error saving progress:', err);
-      throw err;
+    } catch (error) {
+      console.error('Error saving progress:', error);
+      throw error;
     }
   };
 
+  useEffect(() => {
+    let mounted = true;
+    let subscription: any;
+
+    async function initializeWorkflow() {
+      if (!user?.email) return;
+
+      try {
+        const workflow = await WorkflowService.initializeClientWorkflow(
+          user.id,
+          user.email
+        );
+
+        const responses = await WorkflowService.getFormResponses(workflow.id);
+
+        if (mounted) {
+          setState(prev => ({
+            ...prev,
+            currentWorkflow: {
+              ...workflow,
+              sections: defaultSections
+            },
+            responses,
+            currentWorkflowLink: workflow.id,
+            loading: false
+          }));
+
+          subscription = WorkflowService.subscribeToFormResponses(
+            workflow.id,
+            (payload) => {
+              if (mounted) {
+                const update = payload.new;
+                setState(prev => ({
+                  ...prev,
+                  responses: {
+                    ...prev.responses,
+                    [update.section_id]: update.data
+                  }
+                }));
+              }
+            }
+          );
+        }
+      } catch (error) {
+        console.error('Error initializing workflow:', error);
+        if (mounted) {
+          setState(prev => ({
+            ...prev,
+            error: error instanceof Error ? error : new Error('Failed to initialize workflow'),
+            loading: false
+          }));
+        }
+      }
+    }
+
+    initializeWorkflow();
+
+    return () => {
+      mounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
+  }, [user]);
+
   return (
-    <WorkflowContext.Provider value={{
-      ...state,
-      setCurrentWorkflow: (workflow: Workflow | null) => 
-        setState(prev => ({ ...prev, currentWorkflow: workflow })),
-      saveProgress
-    }}>
+    <WorkflowContext.Provider 
+      value={{
+        currentWorkflow: state.currentWorkflow,
+        currentWorkflowLink: state.currentWorkflowLink,
+        responses: state.responses,
+        loading: state.loading,
+        error: state.error,
+        setCurrentWorkflow,
+        saveProgress
+      }}
+    >
       {children}
     </WorkflowContext.Provider>
   );
-};
+}
 
-
-
-  export function useWorkflow() {
-    const context = useContext(WorkflowContext);
-    if (!context) {
-      throw new Error('useWorkflow must be used within a WorkflowProvider');
-    }
-    return context;
+export function useWorkflow() {
+  const context = useContext(WorkflowContext);
+  if (!context) {
+    throw new Error('useWorkflow must be used within a WorkflowProvider');
   }
+  return context;
+}
 
 /*
 
