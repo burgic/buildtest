@@ -41,43 +41,32 @@ export default function Dashboard() {
       if (!currentWorkflow?.id) return;
       
       try {
-        // First get the workflow link
-        const { error: linkError } = await supabase
-          .from('form_responses')
-          .select('id')
-          .eq('workflow_id', currentWorkflow.id)
-          .order('created_at', {ascending: false})
-
-        
-
-        // Then get responses for this link
+        // Query form_responses directly with workflow_id
         const { data, error } = await supabase
           .from('form_responses')
           .select('*')
-          .eq('workflow_link_id', currentWorkflow.id)
+          .eq('workflow_id', currentWorkflow.id)
           .order('created_at', { ascending: false });
 
-          if (error) throw error;
-          if (error) throw linkError;
+        if (error) throw error;
 
-          const groupedResponses = (data || []).reduce<SectionData>((acc, response) => ({
-            ...acc,
-            [response.section_id]: {
-              data: response.data
-            }
-          }), {});
-    
-          setResponses(groupedResponses);
-        } catch (error) {
-          console.error('Error fetching responses:', error);
-        } finally {
-          setLoading(false);
-        }
+        const groupedResponses = (data || []).reduce<SectionData>((acc, response) => ({
+          ...acc,
+          [response.section_id]: {
+            data: response.data
+          }
+        }), {});
+
+        setResponses(groupedResponses);
+      } catch (error) {
+        console.error('Error fetching responses:', error);
+      } finally {
+        setLoading(false);
       }
-    
-      fetchResponses();
-    }, [currentWorkflow]);
-    
+    }
+
+    fetchResponses();
+  }, [currentWorkflow]);
 
 
   const calculateProgress = () => {
