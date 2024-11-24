@@ -31,11 +31,28 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
     ? sections 
     : currentWorkflow?.sections || [];
 
-  useEffect(() => {
-    if (sections.length > 0 && !activeSection) {
-      setActiveSection(workflowSections[0].id);
-    }
-  }, [sections, activeSection]);
+    useEffect(() => {
+      const savedSection = localStorage.getItem('activeSection');
+      if (savedSection && workflowSections.some(s => s.id === savedSection)) {
+        setActiveSection(savedSection);
+      } else if (workflowSections.length > 0) {
+        setActiveSection(workflowSections[0].id);
+      }
+    }, [workflowSections]);
+    
+  
+    useEffect(() => {
+      if (sections.length > 0 && !activeSection) {
+        setActiveSection(workflowSections[0].id);
+      }
+    }, [sections, activeSection]);
+
+    useEffect(() => {
+      if (activeSection) {
+        localStorage.setItem('activeSection', activeSection);
+      }
+    }, [activeSection]);
+    
 
   const currentSection = workflowSections.find(s => s.id === activeSection);
 
