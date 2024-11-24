@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { WorkflowSection } from '../types/workflow.types';
+import { defaultSections } from '../config/WorkflowConfig';
 
 
 // Type definitions
@@ -32,43 +33,62 @@ export interface WorkflowLink {
 }
 
 export class WorkflowService {
-  // Client Workflow Methods
   static async initializeClientWorkflow(userId: string, email: string): Promise<Workflow> {
     try {
-      const { data: existingLinks, error: linkError } = await supabase
-        .from('workflow_links')
-        .select('workflow_id')
-        .eq('client_email', email)
-        .eq('status', 'in_progress')
+      // First check for existing workflow for this user
+      const { data: existingWorkflow, error: fetchError } = await supabase
+        .from('workflows')
+        .select('*')
+        .eq('advisor_id', userId)
+        .eq('status', 'active')
         .maybeSingle();
 
-      if (linkError) throw linkError;
+      if (fetchError) throw fetchError;
 
-      if (existingLinks?.workflow_id) {
-        const { data: workflow, error: fetchError } = await supabase
-          .from('workflows')
+      // If we found an existing workflow, check for link
+      if (existingWorkflow) {
+        const { data: existingLink, error: linkError } = await supabase
+          .from('workflow_links')
           .select('*')
-          .eq('id', existingLinks.workflow_id)
-          .single();
+          .eq('workflow_id', existingWorkflow.id)
+          .eq('client_email', email)
+          .maybeSingle();
 
-        if (fetchError) throw fetchError;
-        if (workflow) return workflow;
+        if (linkError && linkError.code !== 'PGRST116') throw linkError;
+
+        // If no link exists, create one
+        if (!existingLink) {
+          const { error: createLinkError } = await supabase
+            .from('workflow_links')
+            .insert({
+              workflow_id: existingWorkflow.id,
+              client_email: email,
+              status: 'in_progress',
+              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            });
+
+          if (createLinkError) throw createLinkError;
+        }
+
+        return existingWorkflow;
       }
 
+      // If no workflow exists, create a new one
       const { data: newWorkflow, error: createError } = await supabase
         .from('workflows')
         .insert({
           advisor_id: userId,
           title: 'Financial Information Workflow',
           status: 'active',
-          sections: []
+          sections: defaultSections
         })
         .select()
         .single();
 
       if (createError) throw createError;
 
-      const { error: linkCreateError } = await supabase
+      // Now create the workflow link
+      const { error: linkError } = await supabase
         .from('workflow_links')
         .insert({
           workflow_id: newWorkflow.id,
@@ -77,14 +97,70 @@ export class WorkflowService {
           expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         });
 
-      if (linkCreateError) throw linkCreateError;
+      if (linkError) throw linkError;
 
       return newWorkflow;
     } catch (error) {
       console.error('Error initializing client workflow:', error);
-      throw new Error('Failed to initialize workflow');
+      throw error;
     }
   }
+
+
+  static async getWorkflowsByUser(userId: string): Promise<Workflow[]> {
+    try {
+      const { data, error } = await supabase
+        .from('workflows')
+        .select(`
+          *,
+          workflow_links!inner(*)
+        `)
+        .eq('advisor_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching user workflows:', error);
+      throw new Error('Failed to fetch workflows');
+    }
+  }
+
+  static async getWorkflowWithResponses(workflowId: string): Promise<Workflow & { responses: Record<string, any> }> {
+    try {
+      // Get workflow
+      const { data: workflow, error: workflowError } = await supabase
+        .from('workflows')
+        .select('*')
+        .eq('id', workflowId)
+        .single();
+
+      if (workflowError) throw workflowError;
+
+      // Get responses
+      const { data: responses, error: responsesError } = await supabase
+        .from('form_responses')
+        .select('*')
+        .eq('workflow_id', workflowId);
+
+      if (responsesError) throw responsesError;
+
+      // Convert responses array to object keyed by section_id
+      const responsesMap = (responses || []).reduce((acc, response) => ({
+        ...acc,
+        [response.section_id]: response.data
+      }), {});
+
+      return {
+        ...workflow,
+        responses: responsesMap
+      };
+    } catch (error) {
+      console.error('Error fetching workflow with responses:', error);
+      throw new Error('Failed to fetch workflow data');
+    }
+  }
+
 
 
   static async getWorkflow(workflowId: string): Promise<Workflow> {
@@ -329,7 +405,7 @@ export class WorkflowService {
 
   
   // Workflow validation
-  static validateWorkflowData(workflow: Workflow): boolean {
+  static validateWorkflow(workflow: Workflow): boolean {
     if (!workflow.sections || !Array.isArray(workflow.sections)) {
         return false;
     }
