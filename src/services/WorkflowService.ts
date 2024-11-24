@@ -33,6 +33,77 @@ export interface WorkflowLink {
 export class WorkflowService {
   static async initializeClientWorkflow(userId: string, email: string): Promise<Workflow[]> {
     try {
+      // First, check for existing active workflows
+      const { data: existingWorkflows, error: workflowError } = await supabase
+        .from('workflows')
+        .select('*')
+        .eq('advisor_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (workflowError) throw workflowError;
+
+      // If we have existing workflows, use the most recent one
+      if (existingWorkflows && existingWorkflows.length > 0) {
+        const currentWorkflow = existingWorkflows[0];
+
+        // Try to create a link if it doesn't exist
+        const { error: linkError } = await supabase
+          .from('workflow_links')
+          .upsert({
+            workflow_id: currentWorkflow.id,
+            client_email: email,
+            status: 'in_progress',
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          }, {
+            onConflict: 'workflow_id,client_email',
+            ignoreDuplicates: true
+          });
+
+        // Ignore unique constraint violations
+        if (linkError && linkError.code !== '23505') {
+          console.error('Error creating workflow link:', linkError);
+        }
+
+        return [currentWorkflow];
+      }
+
+      // Create new workflow if none exists
+      const { data: newWorkflow, error: createError } = await supabase
+        .from('workflows')
+        .insert({
+          advisor_id: userId,
+          title: 'Financial Information Workflow',
+          status: 'active',
+          sections: defaultSections
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+      if (!newWorkflow) throw new Error('Failed to create workflow');
+
+      // Create initial workflow link
+      await supabase
+        .from('workflow_links')
+        .insert({
+          workflow_id: newWorkflow.id,
+          client_email: email,
+          status: 'in_progress',
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        });
+
+      return [newWorkflow];
+    } catch (error) {
+      console.error('Error in initializeClientWorkflow:', error);
+      throw error;
+    }
+  }
+
+/*
+export class WorkflowService {
+  static async initializeClientWorkflow(userId: string, email: string): Promise<Workflow[]> {
+    try {
       console.log('Initializing workflow for advisor:', userId);
       
       // First, check for existing workflows
@@ -40,12 +111,14 @@ export class WorkflowService {
         .from('workflows')
         .select('*')
         .eq('advisor_id', userId)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .order('created_at', {ascending: false});
 
       if (workflowError) throw workflowError;
 
       if (existingWorkflows && existingWorkflows.length > 0) {
         console.log(`Found ${existingWorkflows.length} existing workflows`);
+        
 
         // Check for existing link before creating a new one
         for (const workflow of existingWorkflows) {
@@ -119,6 +192,7 @@ export class WorkflowService {
       return fallbackWorkflows || [];
     }
   }
+*/
 
   static async getWorkflowWithResponses(workflowId: string): Promise<Workflow & { responses: Record<string, any> }> {
     try {
