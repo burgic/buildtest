@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { 
   Upload,
   ChevronRight,
@@ -10,10 +10,12 @@ import { AutosaveForm } from '../forms/AutosaveForm';
 import FormSection from '../forms/FormSection';
 import type { WorkflowSection } from '../../types/workflow.types';
 
+
 interface ClientPortalProps {
   sections?: WorkflowSection[];
   onSave?: (sectionId: string, data: Record<string, any>) => Promise<void>;
 }
+
 
 const ClientPortal: React.FC<ClientPortalProps> = ({ 
   sections = [], 
@@ -30,10 +32,10 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
     : currentWorkflow?.sections || [];
 
   useEffect(() => {
-    if (workflowSections.length > 0 && !activeSection) {
+    if (sections.length > 0 && !activeSection) {
       setActiveSection(workflowSections[0].id);
     }
-  }, [workflowSections, activeSection]);
+  }, [sections, activeSection]);
 
   const currentSection = workflowSections.find(s => s.id === activeSection);
 
@@ -131,9 +133,9 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
                   </div>
                   
                   <AutosaveForm
-                    sectionId={currentSection.id}
-                    initialData={currentSection.data}
-                    onSave={(data) => handleSave(currentSection.id, data)}
+                    sectionId={activeSection}
+                    initialData={currentSection?.data}
+                    onSave={(data) => handleSave(activeSection, data)}
                   >
                     <div className="grid grid-cols-2 gap-6">
                       {currentSection.fields?.map((field) => (
@@ -176,7 +178,9 @@ const ClientPortal: React.FC<ClientPortalProps> = ({
   );
 };
 
-export default ClientPortal;
+const MemorizedClientPortal = memo(ClientPortal)
+
+export default MemorizedClientPortal;
 
 /*
 import React, { useState, useEffect } from 'react';
