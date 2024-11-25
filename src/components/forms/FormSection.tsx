@@ -40,7 +40,12 @@ const FormSection: React.FC<FormSectionProps> = ({
     onChange?.(e);
   };
 
+  console.log('FormSection render:', { name, value }); // Debug log
+
   const renderInput = () => {
+
+    const inputValue = value?.toString() || '';
+
     if (type === 'select' && options) {
       return (
         <select
@@ -66,7 +71,7 @@ const FormSection: React.FC<FormSectionProps> = ({
         type={type}
         id={name}
         name={name}
-        value={value?.toString() || ''}
+        value={inputValue}
         onChange={handleChange}
         placeholder={placeholder}
         className={baseInputStyles}

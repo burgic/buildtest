@@ -93,9 +93,12 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
 
       if ('name' in child.props) {
         const fieldName = child.props.name;
+        const currentValue = fields[fieldName];
+        console.log('Rendering field:', { name: fieldName, value: currentValue });
+
         return React.cloneElement(child as React.ReactElement<FormInputProps>, {
           ...child.props,
-          value: fields[fieldName] ?? '',
+          value: currentValue !== undefined ? currentValue : '',
           onChange: handleInputChange
         });
       }
@@ -103,6 +106,10 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
       return child;
     });
   };
+
+  useEffect(() => {
+    console.log('Current fields state:', fields);
+  }, [fields]);
 
   return (
     <div className="space-y-4">
