@@ -1,3 +1,4 @@
+/*
 import { useEffect, useState } from 'react';
 import { useWorkflow } from '../../context/WorkflowContext';
 import type { WorkflowSection } from '../../types';
@@ -45,8 +46,8 @@ export function AutosaveWorkflowForm({
   }, [formData, workflowId, section.id, saveProgress, onSave, onError]);
 
   const handleChange = (fieldId: string, value: any) => {
-    setFormData((prev: Record<string, any>) => ({
-      ...prev,
+    setFormData((prevData: any) => ({
+      ...prevData,
       [fieldId]: value
     }));
   };
@@ -110,7 +111,7 @@ export function AutosaveWorkflowForm({
 
   return (
     <div className="space-y-6">
-      {/* Form Header with Save Status */}
+      
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium text-gray-900">{section.title}</h3>
         <div className="flex items-center space-x-2">
@@ -123,7 +124,7 @@ export function AutosaveWorkflowForm({
         </div>
       </div>
 
-      {/* Form Fields */}
+    
       <div className="space-y-4">
         {section.fields.map((field) => (
           <div key={field.id}>
@@ -141,3 +142,5 @@ export function AutosaveWorkflowForm({
     </div>
   );
 }
+
+*/
