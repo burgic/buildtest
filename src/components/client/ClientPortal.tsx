@@ -16,15 +16,12 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ sections = [], onSave }) =>
   const [error, setError] = useState<string | null>(null);
   const [savingStates, setSavingStates] = useState<Record<string, boolean>>({});
 
-  // Use either provided sections or sections from workflow context
   const workflowSections = sections.length > 0 
     ? sections 
     : currentWorkflow?.sections || [];
 
-  // Initialize active section from localStorage or default to first section
   useEffect(() => {
     if (workflowSections.length === 0) return;
-
     const savedSection = localStorage.getItem('activeSection');
     if (savedSection && workflowSections.some(s => s.id === savedSection)) {
       setActiveSection(savedSection);
@@ -33,18 +30,13 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ sections = [], onSave }) =>
     }
   }, [workflowSections]);
 
-  // Save active section to localStorage when it changes
   useEffect(() => {
     if (activeSection) {
       localStorage.setItem('activeSection', activeSection);
     }
   }, [activeSection]);
 
-  const currentSection = workflowSections.find(s => s.id === activeSection) as WorkflowSection & { sections?: WorkflowSection[] };
-
-  const handleSectionChange = (sectionId: string) => {
-    setActiveSection(sectionId);
-  };
+  const currentSection = workflowSections.find(s => s.id === activeSection);
 
   const handleSave = async (sectionId: string, data: Record<string, any>) => {
     try {
@@ -72,117 +64,89 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ sections = [], onSave }) =>
     );
   }
 
-
-    return (
-      <div className="grid grid-cols-12 gap-6">
-        {/* Sidebar */}
-        <div className="col-span-3 bg-[#121212] rounded-xl p-6">
-          <div className="space-y-3">
-            {currentSection?.sections?.map((section: WorkflowSection) => {
-              const isActive = section.id === currentSection.id;
-              const isComplete = savingStates[section.id] === true;
-  
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => handleSectionChange(section.id)}
-                  className={`w-full group flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all
-                    ${isActive 
-                      ? 'bg-[#1D1D1F] text-white' 
-                      : 'text-gray-400 hover:bg-[#1D1D1F] hover:text-white'
-                    }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    {isComplete ? (
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                    ) : (
-                      <div
-                        className={`w-4 h-4 rounded-full border ${
-                          isActive ? 'border-white' : 'border-gray-600'
-                        }`}
-                      />
-                    )}
-                    <span>{section.title}</span>
-                  </div>
-                  <ChevronRight
-                    className={`w-4 h-4 transition-transform ${
-                      isActive ? 'rotate-90' : 'rotate-0'
-                    }`}
-                  />
-                </button>
-              );
-            })}
-          </div>
+  return (
+    <div className="grid grid-cols-12 gap-6">
+      <div className="col-span-3 bg-[#121212] rounded-xl p-6">
+        <div className="space-y-3">
+          {workflowSections.map((section) => (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={`w-full group flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all
+                ${activeSection === section.id 
+                  ? 'bg-[#1D1D1F] text-white' 
+                  : 'text-gray-400 hover:bg-[#1D1D1F] hover:text-white'
+                }`}
+            >
+              <div className="flex items-center space-x-3">
+                {savingStates[section.id] ? (
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                ) : (
+                  <div className={`w-4 h-4 rounded-full border ${
+                    activeSection === section.id ? 'border-white' : 'border-gray-600'
+                  }`} />
+                )}
+                <span>{section.title}</span>
+              </div>
+              <ChevronRight className={`w-4 h-4 transition-transform ${
+                activeSection === section.id ? 'rotate-90' : 'rotate-0'
+              }`} />
+            </button>
+          ))}
         </div>
-  
-        {/* Form Content */}
-        <div className="col-span-9">
-          <div className="bg-[#1D1D1F] rounded-xl p-6">
+      </div>
 
+      <div className="col-span-9">
+        <div className="bg-[#1D1D1F] rounded-xl p-6">
           {currentSection && (
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-medium text-white">
-                    {currentSection.title}
-                  </h3>
-                  {savingStates[currentSection.id] && (
-                    <span className="text-sm text-gray-400">Saving...</span>
-                  )}
-                </div>
-                <AutosaveForm
-                  sectionId={currentSection.id}
-                  initialData={currentSection.data}
-                  onSave={(data) => handleSave(currentSection.id, data)}
-                >
-                  <div className="grid grid-cols-2 gap-6">
-                    {currentSection.fields?.map((field) => (
-                      <FormSection
-                        key={field.id}
-                        label={field.label}
-                        name={field.id}
-                        type={field.type}
-                        required={field.required}
-                        options={field.options}
-                        validation={field.validation}
-                        value={currentSection.data ? currentSection.data[field.id] || '' : ''} 
-                        onChange={(e) => {
-                          const newData = {
-                            ...currentSection.data,
-                            [field.id]: e.target.value,
-                          };
-                          handleSave(currentSection.id, newData);
-                        }}
-                      />
-                    ))}
-                  </div>
-                </AutosaveForm>
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-medium text-white">
+                  {currentSection.title}
+                </h3>
+                {savingStates[currentSection.id] && (
+                  <span className="text-sm text-gray-400">Saving...</span>
+                )}
               </div>
-            )} 
-  
-            {error && (
-              <div className="mt-4 p-3 bg-red-900/50 text-red-200 rounded-lg flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4" />
-                <span>{error}</span>
-              </div>
-            )}
-  
-            {/* Document Upload */}
-            <div className="mt-8 pt-6 border-t border-gray-800">
-              <button
-                className="flex items-center space-x-2 px-4 py-2 bg-[#2D2D2F] rounded-lg text-gray-300 hover:bg-[#3D3D3F] transition-colors"
+              <AutosaveForm
+                sectionId={currentSection.id}
+                initialData={currentSection.data}
+                onSave={(data) => handleSave(currentSection.id, data)}
               >
-                <Upload className="w-4 h-4" />
-                <span>Upload Supporting Documents</span>
-              </button>
+                <div className="grid grid-cols-2 gap-6">
+                  {currentSection.fields?.map((field) => (
+                    <FormSection
+                      key={field.id}
+                      {...field}
+                      name={field.id}
+                      value={currentSection.data?.[field.id] || ''}
+                    />
+                  ))}
+                </div>
+              </AutosaveForm>
             </div>
+          )}
+
+          {error && (
+            <div className="mt-4 p-3 bg-red-900/50 text-red-200 rounded-lg flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="mt-8 pt-6 border-t border-gray-800">
+            <button className="flex items-center space-x-2 px-4 py-2 bg-[#2D2D2F] rounded-lg text-gray-300 hover:bg-[#3D3D3F] transition-colors">
+              <Upload className="w-4 h-4" />
+              <span>Upload Supporting Documents</span>
+            </button>
           </div>
         </div>
       </div>
-    );
-  };
-  
-  export default memo(ClientPortal);
+    </div>
+  );
+};
 
+export default memo(ClientPortal);
 
 
 //////
