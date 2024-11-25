@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import debounce from 'lodash/debounce';
 import { useWorkflow } from '../../context/WorkflowContext';
 
@@ -22,17 +22,27 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   children,
   onSave
 }) => {
-  const formRef = useRef<Record<string, any>>({ ...initialData });
+  const [formData, setFormData] = useState<Record<string, any>>(initialData);
   const { saveProgress } = useWorkflow();
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Initialize form data from props
+  useEffect(() => {
+    setFormData(initialData);
+  }, [initialData]);
+
   const debouncedSave = useCallback(
     debounce(async (data: Record<string, any>) => {
+      if (!sectionId || Object.keys(data).length === 0) return;
+      
       try {
         setSaving(true);
         setError(null);
+        
+        console.log('Saving data:', { sectionId, data });
+        
         await saveProgress(sectionId, data);
         setLastSaved(new Date());
         onSave?.(data);
@@ -50,15 +60,33 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = event.target;
-    const newValue = type === 'number' ? (value ? parseFloat(value) : '') : value;
-    
-    formRef.current = {
-      ...formRef.current,
-      [name]: newValue
-    };
 
-    debouncedSave({ ...formRef.current });
-  };
+    let newValue: string | number = value;
+
+    if (type === 'number') {
+
+      newValue = value === '' ? '': parseFloat(value);
+    
+    // Check if it's a valid number
+    if (typeof newValue === 'number' && isNaN(newValue)) {
+      return; // Don't update if it's an invalid number
+    }
+  }
+  
+  console.log('Input change:', { name, value: newValue, type });
+
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: newValue
+      };
+    
+    // Trigger save
+    debouncedSave(newData);
+    
+    return newData;
+  });
+};
 
   const renderChildren = () => {
     return React.Children.map(children, child => {
@@ -70,7 +98,7 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
       if ('name' in child.props) {
         return React.cloneElement(child as React.ReactElement<FormInputProps>, {
           ...child.props,
-          value: formRef.current[child.props.name] || '',
+          value: formData[child.props.name] || '',
           onChange: handleInputChange
         });
       }
