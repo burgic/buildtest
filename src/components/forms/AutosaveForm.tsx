@@ -25,15 +25,39 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   // Initialize form data when the component mounts
   useEffect(() => {
     if (!isInitialized && Object.keys(initialData).length > 0) {
-      console.log('Initializing form data:', initialData);
-      setFormData(initialData);
-      setIsInitialized(true);
+      console.log('Updating form data with new initial data:', {
+        current: formData,
+        new: initialData
+      });
+      
+      setFormData(prevData => ({
+        ...prevData,  // Keep existing data
+        ...initialData // Merge with new data
+      }));
+      
+      if (!isInitialized) {
+        setIsInitialized(true);
+      }
     }
-  }, [initialData, isInitialized]);
+  }, [initialData]); // Remove isInitialized from dependencies
 
   const debouncedSave = useCallback(
     debounce(async (newData: Record<string, any>) => {
       console.log('Debounced save triggered with data:', newData);
+
+      // Validate data before saving
+      const validData = Object.entries(newData).reduce((acc, [key, value]) => {
+        if (value !== undefined && value !== '') {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as Record<string, any>);
+
+      if (Object.keys(validData).length === 0) {
+        console.log('No valid data to save');
+        return;
+      }
+      
       try {
         setSaving(true);
         setError(null);
@@ -56,17 +80,27 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
 
     // Handle different input types
     if (type === 'number') {
-      newValue = value ? parseFloat(value) : 0;
+      newValue = value ? parseFloat(value) : '';
     }
     
-    const updatedData = {
-      ...formData,
-      [name]: newValue
-    };
-    
-    console.log('Form field updated:', { name, value: newValue, allData: updatedData });
-    setFormData(updatedData);
-    debouncedSave(updatedData);
+    setFormData(prevData => {
+      const updatedData = {
+        ...prevData,  // Preserve all previous data
+        [name]: newValue
+      };
+      
+      console.log('Form field updated:', { 
+        field: name, 
+        value: newValue, 
+        previousData: prevData,
+        updatedData 
+      });
+      
+      // Trigger save after state update
+      debouncedSave(updatedData);
+      
+      return updatedData;
+    });
   };
 
   // Cleanup debounced save on unmount
