@@ -25,22 +25,154 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   // Initialize form data when the component mounts
   useEffect(() => {
     if (!isInitialized && Object.keys(initialData).length > 0) {
-      console.log('Updating form data with new initial data:', {
-        current: formData,
-        new: initialData
-      });
-      
-      setFormData(prevData => ({
-        ...prevData,  // Keep existing data
-        ...initialData // Merge with new data
-      }));
-      
-      if (!isInitialized) {
-        setIsInitialized(true);
-      }
+      console.log('Initializing form data:', initialData);
+      setFormData(initialData);
+      setIsInitialized(true);
     }
-  }, [initialData]); // Remove isInitialized from dependencies
+  }, [initialData, isInitialized]);
 
+  const debouncedSave = useCallback(
+    debounce(async (newData: Record<string, any>) => {
+      console.log('Debounced save triggered with data:', newData);
+      try {
+        setSaving(true);
+        setError(null);
+        await saveProgress(sectionId, newData);
+        setLastSaved(new Date());
+        onSave?.(newData);
+      } catch (err) {
+        console.error('Error saving:', err);
+        setError(err instanceof Error ? err.message : 'Save failed');
+      } finally {
+        setSaving(false);
+      }
+    }, 1000),
+    [sectionId, saveProgress, onSave]
+  );
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = event.target;
+    let newValue: string | number = value;
+
+    // Handle different input types
+    if (type === 'number') {
+      newValue = value ? parseFloat(value) : 0;
+    }
+    
+    const updatedData = {
+      ...formData,
+      [name]: newValue
+    };
+    
+    console.log('Form field updated:', { name, value: newValue, allData: updatedData });
+    setFormData(updatedData);
+    debouncedSave(updatedData);
+  };
+
+  // Cleanup debounced save on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [debouncedSave]);
+
+  // Add cleanup effect
+  useEffect(() => {
+    const currentFormData = formData;
+    
+    return () => {
+      // Save any pending changes on unmount
+      if (Object.keys(currentFormData).length > 0) {
+        saveProgress(sectionId, currentFormData).catch(err => {
+          console.error('Error saving on cleanup:', err);
+        });
+      }
+    };
+  }, [formData, sectionId, saveProgress]);
+
+  // Add error boundary
+  useEffect(() => {
+    if (error) {
+      // Retry save after error
+      const retryTimer = setTimeout(() => {
+        setError(null);
+        debouncedSave(formData);
+      }, 5000);
+
+      return () => clearTimeout(retryTimer);
+    }
+  }, [error, formData, debouncedSave]);
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+        {React.Children.map(children, child => {
+          if (!React.isValidElement(child)) return child;
+          
+          // Clone and enhance child elements with form handling
+          return React.cloneElement(child, {
+            ...child.props,
+            value: formData[child.props.name] ?? '',
+            onChange: handleChange,
+          });
+        })}
+      </form>
+
+      {/* Form Status */}
+      <div className="flex items-center justify-end space-x-4 text-sm">
+        {saving && (
+          <span className="text-gray-400 flex items-center">
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent mr-2" />
+            Saving...
+          </span>
+        )}
+        {error && <span className="text-red-500">{error}</span>}
+        {lastSaved && !saving && (
+          <span className="text-gray-400">
+            Last saved: {lastSaved.toLocaleTimeString()}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
+/*
+
+import React, { useState, useCallback, useEffect } from 'react';
+import debounce from 'lodash/debounce';
+import { useWorkflow } from '../../context/WorkflowContext';
+
+interface AutosaveFormProps {
+  sectionId: string;
+  initialData?: Record<string, any>;
+  children: React.ReactNode;
+  onSave?: (data: Record<string, any>) => void;
+}
+
+export const AutosaveForm: React.FC<AutosaveFormProps> = ({
+  sectionId,
+  initialData = {},
+  children,
+  onSave
+}) => {
+  const [formData, setFormData] = useState<Record<string, any>>(initialData);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const { saveProgress } = useWorkflow();
+  const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Initialize form data when the component mounts
+  useEffect(() => {
+    if (!isInitialized && Object.keys(initialData).length > 0) {
+      console.log('Initializing form data:', initialData);
+      setFormData(initialData);
+      setIsInitialized(true);
+    }
+  }, [initialData, isInitialized]);
+      
   const debouncedSave = useCallback(
     debounce(async (newData: Record<string, any>) => {
       console.log('Debounced save triggered with data:', newData);
@@ -57,7 +189,7 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
         console.log('No valid data to save');
         return;
       }
-      
+
       try {
         setSaving(true);
         setError(null);
@@ -125,7 +257,7 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
         })}
       </form>
 
-      {/* Form Status */}
+   
       <div className="flex items-center justify-end space-x-4 text-sm">
         {saving && (
           <span className="text-gray-400 flex items-center">
@@ -143,6 +275,11 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     </div>
   );
 };
+
+*/
+
+////////////////////
+
   /*
 
   const handleInputChange = (
