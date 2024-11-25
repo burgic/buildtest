@@ -45,10 +45,7 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     const { name, value, type } = event.target;
     const newValue = type === 'number' && value ? parseFloat(value) : value;
 
-    const updatedData = {
-      ...formData,
-      [name]: newValue
-    };
+    const updatedData = {...formData, [name]: newValue};
     
     setFormData(updatedData);
     debouncedSave(updatedData);

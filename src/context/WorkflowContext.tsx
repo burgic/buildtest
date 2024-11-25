@@ -102,6 +102,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
 
     try {
       // Check for existing response
+      console.log('Saving progress:', {sectionId, data});
       const { data: existingResponse } = await supabase
         .from('form_responses')
         .select('id')
