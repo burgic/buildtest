@@ -5,6 +5,7 @@ import { useWorkflow } from '../../context/WorkflowContext';
 interface FormInputProps {
   name: string;
   value?: string | number;
+  type?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
 }
 
@@ -13,7 +14,6 @@ interface AutosaveFormProps {
   initialData?: Record<string, any>;
   children: React.ReactNode;
   onSave?: (data: Record<string, any>) => void;
-  onStatusChange?: (status: { saving: boolean; error: string | null }) => void;
 }
 
 export const AutosaveForm: React.FC<AutosaveFormProps> = ({
@@ -22,7 +22,7 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   children,
   onSave
 }) => {
-  const [formData, setFormData] = useState<Record<string, any>>(initialData);
+  const [fields, setFields] = useState<Record<string, string | number>>(initialData);
   const { saveProgress } = useWorkflow();
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -30,7 +30,7 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
 
   // Initialize form data from props
   useEffect(() => {
-    setFormData(initialData);
+    setFields(initialData);
   }, [initialData]);
 
   const debouncedSave = useCallback(
@@ -63,42 +63,39 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
 
     let newValue: string | number = value;
 
+    // Handle number inputs
     if (type === 'number') {
-
-      newValue = value === '' ? '': parseFloat(value);
-    
-    // Check if it's a valid number
-    if (typeof newValue === 'number' && isNaN(newValue)) {
-      return; // Don't update if it's an invalid number
-    }
-  }
-  
-  console.log('Input change:', { name, value: newValue, type });
-
-    setFormData(prev => {
-      const newData = {
-        ...prev,
-        [name]: newValue
-      };
-    
-    // Trigger save
-    debouncedSave(newData);
-    
-    return newData;
-  });
-};
-
-  const renderChildren = () => {
-    return React.Children.map(children, child => {
-      if (!React.isValidElement(child)) {
-        return child;
+      if (value === '') {
+        newValue = '';
+      } else {
+        const parsed = parseFloat(value);
+        if (isNaN(parsed)) return;
+        newValue = parsed;
       }
+    }
+  
+    console.log('Field change:', { name, value: newValue, type });
 
-      // Type guard to check if the child has the required props
+      setFields(prev => {
+        const newFields = {
+          ...prev,
+          [name]: newValue
+        };
+        debouncedSave(newFields);
+        return newFields;
+      });
+    };
+
+
+  const renderFormFields = () => {
+    return React.Children.map(children, child => {
+      if (!React.isValidElement(child)) return child;
+
       if ('name' in child.props) {
+        const fieldName = child.props.name;
         return React.cloneElement(child as React.ReactElement<FormInputProps>, {
           ...child.props,
-          value: formData[child.props.name] || '',
+          value: fields[fieldName] ?? '',
           onChange: handleInputChange
         });
       }
@@ -109,9 +106,18 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
 
   return (
     <div className="space-y-4">
-      <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-        {renderChildren()}
+      <form 
+        className="space-y-6" 
+        onSubmit={(e) => e.preventDefault()}
+        onChange={(e) => console.log('Form change:', e)}
+      >
+        {renderFormFields()}
       </form>
+
+      {/* Debug info */}
+      <div className="text-xs text-gray-500">
+        <pre>{JSON.stringify(fields, null, 2)}</pre>
+      </div>
       
       {/* Status indicators */}
       <div className="space-y-2">

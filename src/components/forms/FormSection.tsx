@@ -1,4 +1,3 @@
-// src/components/common/forms/FormSection.tsx
 import { ChangeEvent } from 'react';
 
 export interface FormSectionProps {
@@ -16,8 +15,8 @@ export interface FormSectionProps {
     message?: string;
   };
   onChange?: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
-  error?: string | null;
 }
+
 
 const FormSection: React.FC<FormSectionProps> = ({
   label,
@@ -28,28 +27,35 @@ const FormSection: React.FC<FormSectionProps> = ({
   required = false,
   options,
   validation,
-  onChange,
-  error
+  onChange
 }) => {
-    const baseClasses = `
-      w-full bg-[#2D2D2F] border border-gray-700 rounded-lg px-3 py-2
-      text-white placeholder-gray-500 focus:outline-none focus:ring-2 
-      focus:ring-blue-500 focus:border-transparent transition-all
-    `;
-    const renderInput = () => {
+  const baseInputStyles = `
+    w-full bg-[#111111] border border-gray-800 rounded-lg px-3 py-2 text-white
+    placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+    transition-all text-sm
+  `;
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    console.log('FormSection change:', { name, value: e.target.value });
+    onChange?.(e);
+  };
+
+  const renderInput = () => {
     if (type === 'select' && options) {
       return (
         <select
           id={name}
           name={name}
-          value={value || ''}
-          onChange={onChange}
+          value={value?.toString() || ''}
+          onChange={handleChange}
+          className={`${baseInputStyles} appearance-none bg-[#111111] cursor-pointer`}
           required={required}
-          className={baseClasses}
         >
-          <option value="">Select...</option>
+          <option value="" disabled>Select...</option>
           {options.map(option => (
-            <option key={option} value={option}>{option}</option>
+            <option key={option} value={option} className="bg-[#1D1D1F]">
+              {option}
+            </option>
           ))}
         </select>
       );
@@ -61,35 +67,29 @@ const FormSection: React.FC<FormSectionProps> = ({
         id={name}
         name={name}
         value={value?.toString() || ''}
-        onChange={onChange}
+        onChange={handleChange}
         placeholder={placeholder}
-        className={baseClasses}
+        className={baseInputStyles}
         required={required}
         min={validation?.min}
         max={validation?.max}
         pattern={validation?.pattern}
       />
     );
+  }
+
+    return (
+      <div className="space-y-2">
+        <label htmlFor={name} className="block text-sm font-medium text-gray-300">
+          {label}
+          {required && <span className="text-blue-400 ml-1">*</span>}
+        </label>
+        {renderInput()}
+        {validation?.message && (
+          <p className="mt-1 text-sm text-gray-500">{validation.message}</p>
+        )}
+      </div>
+    );
   };
-
-  return (
-    <div className="space-y-2">
-      <label 
-        htmlFor={name} 
-        className="block text-sm font-medium text-gray-300"
-      >
-        {label}
-        {required && <span className="text-blue-400 ml-1">*</span>}
-      </label>
-      {renderInput()}
-      {validation?.message && (
-        <p className="text-sm text-gray-500">{validation.message}</p>
-      )}
-      {error && (
-        <p className="text-sm text-red-500">{error}</p>
-      )}
-    </div>
-  );
-};
-
-export default FormSection;
+  
+  export default FormSection;
