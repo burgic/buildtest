@@ -14,6 +14,7 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 import AuthCallback from './pages/auth/callback';
 import Dashboard from './pages/Dashboard';
 import FinancialProfile from './pages/FinancialProfile';
+import FinancialForm from './components/client/FinancialFormComponent';
 
 function App() {
   return (
@@ -35,6 +36,14 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                  path="/financial-profile"
+                  element={
+                    <ProtectedRoute>
+                      <FinancialForm />
+                    </ProtectedRoute>
+                  }
+                />
                   <Route
                     path="/client/*"
                     element={
