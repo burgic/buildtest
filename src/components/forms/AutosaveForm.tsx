@@ -1,13 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import debounce from 'lodash/debounce';
 import { useWorkflow } from '../../context/WorkflowContext';
 
-interface FormInputProps {
-  name: string;
-  value?: string | number;
-  type?: string;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
-}
 
 interface AutosaveFormProps {
   sectionId: string;
@@ -22,39 +16,70 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   children,
   onSave
 }) => {
-  const [fields, setFields] = useState<Record<string, string | number>>(initialData);
+  const [formData, setFormData] = useState<Record<string, any>>(initialData);
   const { saveProgress } = useWorkflow();
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Initialize form data from props
-  useEffect(() => {
-    setFields(initialData);
-  }, [initialData]);
-
   const debouncedSave = useCallback(
     debounce(async (data: Record<string, any>) => {
-      if (!sectionId || Object.keys(data).length === 0) return;
-      
       try {
         setSaving(true);
         setError(null);
-        
-        console.log('Saving data:', { sectionId, data });
-        
         await saveProgress(sectionId, data);
         setLastSaved(new Date());
         onSave?.(data);
       } catch (err) {
-        console.error('Error in debouncedSave:', err);
-        setError(err instanceof Error ? err.message : 'Failed to save progress');
+        console.error('Error saving:', err);
+        setError(err instanceof Error ? err.message : 'Save failed');
       } finally {
         setSaving(false);
       }
-    }, 1500),
+    }, 1000),
     [sectionId, saveProgress, onSave]
   );
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = event.target;
+    const newValue = type === 'number' && value ? parseFloat(value) : value;
+
+    const updatedData = {
+      ...formData,
+      [name]: newValue
+    };
+    
+    setFormData(updatedData);
+    debouncedSave(updatedData);
+  };
+
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={(e) => e.preventDefault()}>
+        {React.Children.map(children, child => {
+          if (!React.isValidElement(child)) return child;
+          return React.cloneElement(child, {
+            ...child.props,
+            value: formData[child.props.name] || '',
+            onChange: handleChange
+          });
+        })}
+      </form>
+
+      <div className="text-sm">
+        {saving && <span className="text-gray-400">Saving...</span>}
+        {error && <span className="text-red-500">{error}</span>}
+        {lastSaved && !saving && (
+          <span className="text-gray-400">Last saved: {lastSaved.toLocaleTimeString()}</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+  /*
 
   const handleInputChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -121,12 +146,12 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
         {renderFormFields()}
       </form>
 
-      {/* Debug info */}
+      
       <div className="text-xs text-gray-500">
         <pre>{JSON.stringify(fields, null, 2)}</pre>
       </div>
       
-      {/* Status indicators */}
+    
       <div className="space-y-2">
         {error && (
           <div className="text-red-500 text-sm">{error}</div>
@@ -143,3 +168,5 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
     </div>
   );
 };
+
+*/
