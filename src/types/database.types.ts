@@ -1,3 +1,13 @@
+// In database.types.ts
+export interface FormResponse {
+  id: string;
+  workflow_id: string;
+  section_id: string;
+  data: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
 // src/lib/database.types.ts
 
 export interface Database {

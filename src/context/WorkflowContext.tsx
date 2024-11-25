@@ -99,50 +99,58 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     if (!state.currentWorkflow?.id) {
       throw new Error('No active workflow');
     }
-
+  
     try {
-      // Check for existing response
-      console.log('Saving progress:', {sectionId, data});
-      const { data: existingResponse } = await supabase
+      console.log('Saving progress:', { sectionId, data });
+      
+      // First check for existing response
+      const { data: existingData, error: checkError } = await supabase
         .from('form_responses')
-        .select('id')
+        .select('*')
         .eq('workflow_id', state.currentWorkflow.id)
         .eq('section_id', sectionId)
-        .single();
-
-      if (existingResponse) {
+        .maybeSingle();
+  
+      if (checkError) {
+        throw checkError;
+      }
+  
+      if (existingData) {
         // Update existing response
-        await supabase
+        const { error: updateError } = await supabase
           .from('form_responses')
-          .update({ data })
-          .eq('id', existingResponse.id);
+          .update({ 
+            data,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingData.id);
+  
+        if (updateError) throw updateError;
+  
       } else {
-        // Create new response
-        await supabase
+        // Insert new response
+        const { error: insertError } = await supabase
           .from('form_responses')
           .insert({
             workflow_id: state.currentWorkflow.id,
             section_id: sectionId,
-            data
+            data,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           });
+  
+        if (insertError) throw insertError;
       }
-
+  
       // Update local state
       setState(prev => ({
         ...prev,
         responses: {
           ...prev.responses,
           [sectionId]: data
-        },
-        currentWorkflow: prev.currentWorkflow ? {
-          ...prev.currentWorkflow,
-          sections: prev.currentWorkflow.sections.map(section =>
-            section.id === sectionId
-              ? { ...section, data: { ...(section.data || {}), ...data } }
-              : section
-          )
-        } : null
+        }
       }));
+  
     } catch (error) {
       console.error('Error saving progress:', error);
       throw error;
