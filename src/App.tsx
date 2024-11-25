@@ -6,7 +6,6 @@ import { WorkflowForms } from './components/workflow/WorkflowForms';
 import { AppLayout } from './components/AppLayout';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import AdvisorDashboard from './pages/AdvisorDashboard';
-import MemorizedClientPortal from './pages/ClientPortal';
 import Login from './pages/auth/login';
 import Register from './pages/auth/register';
 import './index.css';
@@ -44,17 +43,6 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                  <Route
-                    path="/client/*"
-                    element={
-                      <ProtectedRoute>
-                        <Routes>
-                          <Route index element={<MemorizedClientPortal />} />
-                          <Route path="workflow/:id" element={<MemorizedClientPortal />} />
-                        </Routes>
-                      </ProtectedRoute>
-                    }
-                  />
                   
                   <Route
                   path="/workflow"

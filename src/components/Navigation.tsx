@@ -35,7 +35,7 @@ const Navigation: React.FC = () => {
                 <Briefcase className="w-5 h-5" />
                 <span>Advisor Dashboard</span>
               </NavLink>
-              <NavLink to="/client" className={linkClass}>
+              <NavLink to="/financial-form" className={linkClass}>
                 <Users className="w-5 h-5" />
                 <span>Client Portal</span>
               </NavLink>

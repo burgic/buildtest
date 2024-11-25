@@ -205,6 +205,37 @@ export default function FinancialForm() {
           </div>
         );
 
+        case FORM_PAGES.ASSETS:
+            return (
+              <div className="space-y-6">
+                <h2 className="text-xl font-semibold">Monthly Expenses</h2>
+                <div className="grid grid-cols-2 gap-6">
+                  {Object.entries({
+                    
+                    property: 'Property Value',
+                    savings: 'Savings',
+                    investments: 'Investments',
+                    pension: 'Pensions',
+                    mortgages: 'Mortgages',
+                    loans: 'Loans',
+                    creditCards: 'Credit Cards'
+                
+                  }).map(([key, label]) => (
+                    <div key={key}>
+                      <label className="block text-sm font-medium text-gray-200">{label}</label>
+                      <input
+                        type="number"
+                        value={formData.assets[key as keyof typeof formData.assets]}
+                        onChange={(e) => handleInputChange('expenses', key, e.target.value)}
+                        className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
+                        placeholder="0"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+
       // Similar pattern for other pages...
       default:
         return null;
