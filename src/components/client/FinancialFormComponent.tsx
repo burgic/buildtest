@@ -208,7 +208,7 @@ export default function FinancialForm() {
         case FORM_PAGES.ASSETS:
             return (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold">Monthly Expenses</h2>
+                <h2 className="text-xl font-semibold">Assets</h2>
                 <div className="grid grid-cols-2 gap-6">
                   {Object.entries({
                     
@@ -226,7 +226,7 @@ export default function FinancialForm() {
                       <input
                         type="number"
                         value={formData.assets[key as keyof typeof formData.assets]}
-                        onChange={(e) => handleInputChange('expenses', key, e.target.value)}
+                        onChange={(e) => handleInputChange('assets', key, e.target.value)}
                         className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
                         placeholder="0"
                       />
