@@ -16,18 +16,20 @@ export const AutosaveForm: React.FC<AutosaveFormProps> = ({
   onSave
 }) => {
   const [formData, setFormData] = useState<Record<string, any>>(initialData);
+  const [isInitialized, setIsInitialized] = useState(false);
   const { saveProgress } = useWorkflow();
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize/update form data when initialData changes
+  // Initialize form data when the component mounts
   useEffect(() => {
-    if (Object.keys(initialData).length > 0) {
+    if (!isInitialized && Object.keys(initialData).length > 0) {
       console.log('Initializing form data:', initialData);
       setFormData(initialData);
+      setIsInitialized(true);
     }
-  }, [initialData]);
+  }, [initialData, isInitialized]);
 
   const debouncedSave = useCallback(
     debounce(async (newData: Record<string, any>) => {
